@@ -19,6 +19,11 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+// Layout wrapper for authenticated routes
+const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => (
+  <AppLayout>{children}</AppLayout>
+);
+
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
@@ -30,20 +35,14 @@ const App = () => (
             <BrowserRouter>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
-                <Route path="*" element={
-                  <AppLayout>
-                    <Routes>
-                      <Route path="/" element={<Dashboard />} />
-                      <Route path="/transactions" element={<Transactions />} />
-                      <Route path="/budget" element={<Budget />} />
-                      <Route path="/accounts" element={<Accounts />} />
-                      <Route path="/investments" element={<Investments />} />
-                      <Route path="/settings" element={<SettingsPage />} />
-                      <Route path="/profile" element={<Profile />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </AppLayout>
-                } />
+                <Route path="/" element={<AuthenticatedLayout><Dashboard /></AuthenticatedLayout>} />
+                <Route path="/transactions" element={<AuthenticatedLayout><Transactions /></AuthenticatedLayout>} />
+                <Route path="/budget" element={<AuthenticatedLayout><Budget /></AuthenticatedLayout>} />
+                <Route path="/accounts" element={<AuthenticatedLayout><Accounts /></AuthenticatedLayout>} />
+                <Route path="/investments" element={<AuthenticatedLayout><Investments /></AuthenticatedLayout>} />
+                <Route path="/settings" element={<AuthenticatedLayout><SettingsPage /></AuthenticatedLayout>} />
+                <Route path="/profile" element={<AuthenticatedLayout><Profile /></AuthenticatedLayout>} />
+                <Route path="*" element={<AuthenticatedLayout><NotFound /></AuthenticatedLayout>} />
               </Routes>
             </BrowserRouter>
           </FinanceProvider>
