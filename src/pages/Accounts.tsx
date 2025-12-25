@@ -7,10 +7,13 @@ import {
   Eye,
   EyeOff,
   Plus,
-  MoreHorizontal,
   TrendingUp,
   AlertCircle,
-  ChevronRight
+  ChevronRight,
+  Wallet,
+  CheckCircle,
+  XCircle,
+  FileText
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,8 +22,8 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useFinance } from "@/contexts/FinanceContext";
-import { AccountModal, CreditCardModal, VaultModal } from "@/components/modals";
-import { BankAccount, CreditCardType, VaultItem } from "@/hooks/useFinanceData";
+import { AccountModal, CreditCardModal, DebitCardModal, VaultModal } from "@/components/modals";
+import { BankAccount, CreditCardType, DebitCardType, VaultItem } from "@/hooks/useFinanceData";
 
 function BankAccountCard({ 
   account, 
@@ -131,10 +134,66 @@ function CreditCardCard({
   );
 }
 
+function DebitCardCard({ 
+  card, 
+  delay,
+  onClick 
+}: { 
+  card: DebitCardType; 
+  delay: number;
+  onClick: () => void;
+}) {
+  return (
+    <Card 
+      className="glass-card overflow-hidden opacity-0 animate-fade-in hover:shadow-lg transition-all duration-300 cursor-pointer"
+      style={{ animationDelay: `${delay}ms` }}
+      onClick={onClick}
+    >
+      <div className={cn("h-2 bg-gradient-to-r", card.color)} />
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <p className="font-semibold text-foreground">{card.bank} {card.name}</p>
+            <p className="text-sm text-muted-foreground">**** **** **** {card.lastFour}</p>
+          </div>
+          <Wallet className="h-6 w-6 text-muted-foreground" />
+        </div>
+        
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-muted/50">
+            <div>
+              <p className="text-xs text-muted-foreground">Linked Account</p>
+              <p className="text-sm font-medium text-foreground">{card.linkedAccount}</p>
+            </div>
+            <Badge variant="outline" className="text-xs">
+              {card.cardNetwork}
+            </Badge>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {card.isActive ? (
+                <CheckCircle className="h-4 w-4 text-success" />
+              ) : (
+                <XCircle className="h-4 w-4 text-destructive" />
+              )}
+              <span className={cn("text-sm", card.isActive ? "text-success" : "text-destructive")}>
+                {card.isActive ? "Active" : "Inactive"}
+              </span>
+            </div>
+            <span className="text-sm text-muted-foreground">Exp: {card.expiryDate}</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Accounts() {
   const { 
     bankAccounts, 
     creditCards, 
+    debitCards,
     vaultItems,
     addBankAccount,
     updateBankAccount,
@@ -142,6 +201,9 @@ export default function Accounts() {
     addCreditCard,
     updateCreditCard,
     deleteCreditCard,
+    addDebitCard,
+    updateDebitCard,
+    deleteDebitCard,
     addVaultItem,
     updateVaultItem,
     deleteVaultItem
@@ -151,15 +213,18 @@ export default function Accounts() {
   const [showVaultItems, setShowVaultItems] = useState(false);
   
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
-  const [isCardModalOpen, setIsCardModalOpen] = useState(false);
+  const [isCreditCardModalOpen, setIsCreditCardModalOpen] = useState(false);
+  const [isDebitCardModalOpen, setIsDebitCardModalOpen] = useState(false);
   const [isVaultModalOpen, setIsVaultModalOpen] = useState(false);
   
   const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
-  const [selectedCard, setSelectedCard] = useState<CreditCardType | null>(null);
+  const [selectedCreditCard, setSelectedCreditCard] = useState<CreditCardType | null>(null);
+  const [selectedDebitCard, setSelectedDebitCard] = useState<DebitCardType | null>(null);
   const [selectedVaultItem, setSelectedVaultItem] = useState<VaultItem | null>(null);
 
   const totalBalance = bankAccounts.reduce((sum, acc) => sum + acc.balance, 0);
   const totalCredit = creditCards.reduce((sum, card) => sum + card.used, 0);
+  const activeDebitCards = debitCards.filter(c => c.isActive).length;
 
   const handleEditAccount = (account: BankAccount) => {
     setSelectedAccount(account);
@@ -171,14 +236,24 @@ export default function Accounts() {
     setIsAccountModalOpen(true);
   };
 
-  const handleEditCard = (card: CreditCardType) => {
-    setSelectedCard(card);
-    setIsCardModalOpen(true);
+  const handleEditCreditCard = (card: CreditCardType) => {
+    setSelectedCreditCard(card);
+    setIsCreditCardModalOpen(true);
   };
 
-  const handleAddCard = () => {
-    setSelectedCard(null);
-    setIsCardModalOpen(true);
+  const handleAddCreditCard = () => {
+    setSelectedCreditCard(null);
+    setIsCreditCardModalOpen(true);
+  };
+
+  const handleEditDebitCard = (card: DebitCardType) => {
+    setSelectedDebitCard(card);
+    setIsDebitCardModalOpen(true);
+  };
+
+  const handleAddDebitCard = () => {
+    setSelectedDebitCard(null);
+    setIsDebitCardModalOpen(true);
   };
 
   const handleEditVaultItem = (item: VaultItem) => {
@@ -195,12 +270,12 @@ export default function Accounts() {
     <>
       <Helmet>
         <title>Accounts & Vault | FinanceFlow - Personal Finance Tracker</title>
-        <meta name="description" content="Manage your bank accounts, credit cards, and securely store important documents." />
+        <meta name="description" content="Manage your bank accounts, credit cards, debit cards, and securely store important documents." />
       </Helmet>
 
       <div className="space-y-6">
         {/* Overview */}
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
           <Card className="glass-card bg-gradient-to-br from-primary/5 to-accent/5">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
@@ -233,16 +308,34 @@ export default function Accounts() {
               </div>
             </CardContent>
           </Card>
+
+          <Card className="glass-card bg-gradient-to-br from-success/5 to-success/10">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Debit Cards</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{debitCards.length} cards</p>
+                  <p className="text-xs text-success mt-1">{activeDebitCards} active</p>
+                </div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-success/10">
+                  <Wallet className="h-6 w-6 text-success" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-card border border-border p-1 h-auto">
+          <TabsList className="bg-card border border-border p-1 h-auto flex-wrap">
             <TabsTrigger value="banks" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Bank Accounts
             </TabsTrigger>
-            <TabsTrigger value="cards" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <TabsTrigger value="credit" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Credit Cards
+            </TabsTrigger>
+            <TabsTrigger value="debit" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Debit Cards
             </TabsTrigger>
             <TabsTrigger value="vault" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Secure Vault
@@ -271,23 +364,45 @@ export default function Accounts() {
             </div>
           </TabsContent>
 
-          <TabsContent value="cards" className="mt-6">
+          <TabsContent value="credit" className="mt-6">
             <div className="grid gap-4 sm:grid-cols-2">
               {creditCards.map((card, index) => (
                 <CreditCardCard 
                   key={card.id} 
                   card={card} 
                   delay={index * 50}
-                  onClick={() => handleEditCard(card)}
+                  onClick={() => handleEditCreditCard(card)}
                 />
               ))}
               <Card 
                 className="glass-card border-dashed flex items-center justify-center min-h-[250px] cursor-pointer hover:border-primary/50 transition-colors"
-                onClick={handleAddCard}
+                onClick={handleAddCreditCard}
               >
                 <div className="text-center">
                   <Plus className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">Add Card</p>
+                  <p className="text-sm text-muted-foreground">Add Credit Card</p>
+                </div>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="debit" className="mt-6">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {debitCards.map((card, index) => (
+                <DebitCardCard 
+                  key={card.id} 
+                  card={card} 
+                  delay={index * 50}
+                  onClick={() => handleEditDebitCard(card)}
+                />
+              ))}
+              <Card 
+                className="glass-card border-dashed flex items-center justify-center min-h-[200px] cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={handleAddDebitCard}
+              >
+                <div className="text-center">
+                  <Plus className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">Add Debit Card</p>
                 </div>
               </Card>
             </div>
@@ -318,13 +433,22 @@ export default function Accounts() {
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                        <Lock className="h-5 w-5 text-primary" />
+                        {item.type === "document" ? (
+                          <FileText className="h-5 w-5 text-primary" />
+                        ) : (
+                          <Lock className="h-5 w-5 text-primary" />
+                        )}
                       </div>
                       <div>
                         <p className="font-medium text-foreground">
                           {showVaultItems ? item.title : "••••••••"}
                         </p>
-                        <p className="text-xs text-muted-foreground">{item.category}</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-2">
+                          {item.category}
+                          {item.type === "document" && (
+                            <Badge variant="outline" className="text-xs">Document</Badge>
+                          )}
+                        </p>
                       </div>
                     </div>
                     <ChevronRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -356,15 +480,29 @@ export default function Accounts() {
 
       {/* Credit Card Modal */}
       <CreditCardModal
-        isOpen={isCardModalOpen}
+        isOpen={isCreditCardModalOpen}
         onClose={() => {
-          setIsCardModalOpen(false);
-          setSelectedCard(null);
+          setIsCreditCardModalOpen(false);
+          setSelectedCreditCard(null);
         }}
         onSave={addCreditCard}
         onUpdate={updateCreditCard}
         onDelete={deleteCreditCard}
-        card={selectedCard}
+        card={selectedCreditCard}
+      />
+
+      {/* Debit Card Modal */}
+      <DebitCardModal
+        isOpen={isDebitCardModalOpen}
+        onClose={() => {
+          setIsDebitCardModalOpen(false);
+          setSelectedDebitCard(null);
+        }}
+        onSave={addDebitCard}
+        onUpdate={updateDebitCard}
+        onDelete={deleteDebitCard}
+        card={selectedDebitCard}
+        bankAccounts={bankAccounts}
       />
 
       {/* Vault Modal */}
