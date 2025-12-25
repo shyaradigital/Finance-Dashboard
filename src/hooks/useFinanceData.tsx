@@ -68,6 +68,9 @@ export interface VaultItem {
   title: string;
   category: string;
   value: string;
+  type: "text" | "document";
+  documentUrl?: string;
+  documentName?: string;
   lastUpdated: string;
 }
 
@@ -163,10 +166,10 @@ const initialCreditCards: CreditCardType[] = [
 ];
 
 const initialVaultItems: VaultItem[] = [
-  { id: "1", title: "PAN Card", category: "Identity", value: "ABCDE1234F", lastUpdated: "Dec 15, 2024" },
-  { id: "2", title: "Aadhaar Card", category: "Identity", value: "XXXX XXXX 1234", lastUpdated: "Dec 15, 2024" },
-  { id: "3", title: "Passport", category: "Travel", value: "A1234567", lastUpdated: "Nov 20, 2024" },
-  { id: "4", title: "Insurance Policy", category: "Documents", value: "POL-12345678", lastUpdated: "Oct 5, 2024" },
+  { id: "1", title: "PAN Card", category: "Identity", value: "ABCDE1234F", type: "text", lastUpdated: "Dec 15, 2024" },
+  { id: "2", title: "Aadhaar Card", category: "Identity", value: "XXXX XXXX 1234", type: "text", lastUpdated: "Dec 15, 2024" },
+  { id: "3", title: "Passport", category: "Travel", value: "A1234567", type: "text", lastUpdated: "Nov 20, 2024" },
+  { id: "4", title: "Insurance Policy", category: "Documents", value: "POL-12345678", type: "document", documentName: "insurance_policy.pdf", lastUpdated: "Oct 5, 2024" },
 ];
 
 const initialInvestments: Investment[] = [
