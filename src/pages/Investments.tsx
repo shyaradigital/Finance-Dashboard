@@ -8,7 +8,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   RefreshCw,
-  Calendar,
   Plus
 } from "lucide-react";
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
@@ -17,40 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-
-interface Investment {
-  id: string;
-  name: string;
-  type: "mutual_fund" | "stock" | "sip" | "ppf" | "nps";
-  invested: number;
-  current: number;
-  returns: number;
-  color: string;
-}
-
-const investments: Investment[] = [
-  { id: "1", name: "Axis Bluechip Fund", type: "mutual_fund", invested: 200000, current: 245000, returns: 22.5, color: "hsl(270, 60%, 55%)" },
-  { id: "2", name: "HDFC Mid-Cap Fund", type: "mutual_fund", invested: 150000, current: 172500, returns: 15, color: "hsl(280, 70%, 60%)" },
-  { id: "3", name: "Reliance Industries", type: "stock", invested: 100000, current: 118000, returns: 18, color: "hsl(160, 60%, 45%)" },
-  { id: "4", name: "TCS", type: "stock", invested: 75000, current: 82500, returns: 10, color: "hsl(35, 90%, 55%)" },
-  { id: "5", name: "PPF Account", type: "ppf", invested: 500000, current: 580000, returns: 7.1, color: "hsl(200, 70%, 50%)" },
-  { id: "6", name: "NPS Tier 1", type: "nps", invested: 300000, current: 345000, returns: 15, color: "hsl(270, 40%, 70%)" },
-];
-
-interface SIP {
-  id: string;
-  name: string;
-  amount: number;
-  frequency: string;
-  nextDate: string;
-  totalInvested: number;
-}
-
-const sips: SIP[] = [
-  { id: "1", name: "Axis Bluechip Fund", amount: 10000, frequency: "Monthly", nextDate: "Jan 5", totalInvested: 120000 },
-  { id: "2", name: "HDFC Mid-Cap Fund", amount: 5000, frequency: "Monthly", nextDate: "Jan 10", totalInvested: 60000 },
-  { id: "3", name: "PPF Contribution", amount: 12500, frequency: "Monthly", nextDate: "Jan 1", totalInvested: 150000 },
-];
+import { useFinance } from "@/contexts/FinanceContext";
+import { InvestmentModal, SIPModal } from "@/components/modals";
+import { Investment, SIP } from "@/hooks/useFinanceData";
 
 const netWorthHistory = [
   { month: "Jul", value: 2100000 },
@@ -69,7 +37,22 @@ const assetAllocation = [
 ];
 
 export default function Investments() {
+  const { 
+    investments, 
+    sips,
+    addInvestment,
+    updateInvestment,
+    deleteInvestment,
+    addSIP,
+    updateSIP,
+    deleteSIP
+  } = useFinance();
+  
   const [activeTab, setActiveTab] = useState("portfolio");
+  const [isInvestmentModalOpen, setIsInvestmentModalOpen] = useState(false);
+  const [isSIPModalOpen, setIsSIPModalOpen] = useState(false);
+  const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
+  const [selectedSIP, setSelectedSIP] = useState<SIP | null>(null);
 
   const totalInvested = investments.reduce((sum, inv) => sum + inv.invested, 0);
   const totalCurrent = investments.reduce((sum, inv) => sum + inv.current, 0);
@@ -77,6 +60,26 @@ export default function Investments() {
   const totalReturnsPercentage = ((totalReturns / totalInvested) * 100).toFixed(1);
   const netWorth = assetAllocation.reduce((sum, asset) => sum + asset.value, 0);
   const totalSIPAmount = sips.reduce((sum, sip) => sum + sip.amount, 0);
+
+  const handleEditInvestment = (investment: Investment) => {
+    setSelectedInvestment(investment);
+    setIsInvestmentModalOpen(true);
+  };
+
+  const handleAddInvestment = () => {
+    setSelectedInvestment(null);
+    setIsInvestmentModalOpen(true);
+  };
+
+  const handleEditSIP = (sip: SIP) => {
+    setSelectedSIP(sip);
+    setIsSIPModalOpen(true);
+  };
+
+  const handleAddSIP = () => {
+    setSelectedSIP(null);
+    setIsSIPModalOpen(true);
+  };
 
   return (
     <>
@@ -88,7 +91,10 @@ export default function Investments() {
       <div className="space-y-6">
         {/* Overview Cards */}
         <div className="grid gap-4 sm:grid-cols-3">
-          <Card className="glass-card bg-gradient-to-br from-primary/5 to-accent/5">
+          <Card 
+            className="glass-card bg-gradient-to-br from-primary/5 to-accent/5 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={handleAddInvestment}
+          >
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
@@ -138,17 +144,32 @@ export default function Investments() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-card border border-border p-1 h-auto">
-            <TabsTrigger value="portfolio" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Portfolio
-            </TabsTrigger>
-            <TabsTrigger value="sips" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              SIPs & Recurring
-            </TabsTrigger>
-            <TabsTrigger value="networth" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Net Worth
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between">
+            <TabsList className="bg-card border border-border p-1 h-auto">
+              <TabsTrigger value="portfolio" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                Portfolio
+              </TabsTrigger>
+              <TabsTrigger value="sips" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                SIPs & Recurring
+              </TabsTrigger>
+              <TabsTrigger value="networth" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                Net Worth
+              </TabsTrigger>
+            </TabsList>
+
+            {activeTab === "portfolio" && (
+              <Button variant="gradient" className="gap-2" onClick={handleAddInvestment}>
+                <Plus className="h-4 w-4" />
+                Add Investment
+              </Button>
+            )}
+            {activeTab === "sips" && (
+              <Button variant="gradient" className="gap-2" onClick={handleAddSIP}>
+                <Plus className="h-4 w-4" />
+                Add SIP
+              </Button>
+            )}
+          </div>
 
           <TabsContent value="portfolio" className="mt-6 space-y-4">
             {investments.map((investment, index) => {
@@ -158,8 +179,9 @@ export default function Investments() {
               return (
                 <Card 
                   key={investment.id} 
-                  className="glass-card opacity-0 animate-fade-in hover:shadow-md transition-all duration-200"
+                  className="glass-card opacity-0 animate-fade-in hover:shadow-md transition-all duration-200 cursor-pointer"
                   style={{ animationDelay: `${index * 50}ms` }}
+                  onClick={() => handleEditInvestment(investment)}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
@@ -211,7 +233,7 @@ export default function Investments() {
                       <p className="text-xl font-bold text-foreground">₹{totalSIPAmount.toLocaleString('en-IN')}</p>
                     </div>
                   </div>
-                  <Button variant="gradient">
+                  <Button variant="gradient" onClick={handleAddSIP}>
                     <Plus className="h-4 w-4 mr-2" />
                     Add SIP
                   </Button>
@@ -223,8 +245,9 @@ export default function Investments() {
               {sips.map((sip, index) => (
                 <Card 
                   key={sip.id}
-                  className="glass-card opacity-0 animate-fade-in"
+                  className="glass-card opacity-0 animate-fade-in cursor-pointer hover:shadow-md transition-shadow"
                   style={{ animationDelay: `${index * 50}ms` }}
+                  onClick={() => handleEditSIP(sip)}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
@@ -356,6 +379,32 @@ export default function Investments() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Investment Modal */}
+      <InvestmentModal
+        isOpen={isInvestmentModalOpen}
+        onClose={() => {
+          setIsInvestmentModalOpen(false);
+          setSelectedInvestment(null);
+        }}
+        onSave={addInvestment}
+        onUpdate={updateInvestment}
+        onDelete={deleteInvestment}
+        investment={selectedInvestment}
+      />
+
+      {/* SIP Modal */}
+      <SIPModal
+        isOpen={isSIPModalOpen}
+        onClose={() => {
+          setIsSIPModalOpen(false);
+          setSelectedSIP(null);
+        }}
+        onSave={addSIP}
+        onUpdate={updateSIP}
+        onDelete={deleteSIP}
+        sip={selectedSIP}
+      />
     </>
   );
 }

@@ -4,7 +4,6 @@ import {
   Sparkles, 
   Settings, 
   Bell, 
-  Tag, 
   Zap,
   TrendingUp,
   TrendingDown,
@@ -15,7 +14,9 @@ import {
   Globe,
   Shield,
   HelpCircle,
-  LogOut
+  LogOut,
+  Plus,
+  Pencil
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,10 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { useFinance } from "@/contexts/FinanceContext";
+import { CategoryModal, AutomationRuleModal, InsightDetailModal } from "@/components/modals";
+import { Category, AutomationRule } from "@/hooks/useFinanceData";
+import { toast } from "sonner";
 
 interface Insight {
   id: string;
@@ -30,14 +35,6 @@ interface Insight {
   title: string;
   description: string;
   action?: string;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  type: "income" | "expense";
-  count: number;
-  color: string;
 }
 
 const insights: Insight[] = [
@@ -48,32 +45,70 @@ const insights: Insight[] = [
   { id: "5", type: "success", title: "Investment Returns Up", description: "Your portfolio has gained 12.5% this month, outperforming the market.", action: "View Portfolio" },
 ];
 
-const categories: Category[] = [
-  { id: "1", name: "Salary", type: "income", count: 12, color: "bg-success" },
-  { id: "2", name: "Freelance", type: "income", count: 8, color: "bg-accent" },
-  { id: "3", name: "Housing", type: "expense", count: 12, color: "bg-primary" },
-  { id: "4", name: "Food & Dining", type: "expense", count: 45, color: "bg-warning" },
-  { id: "5", name: "Shopping", type: "expense", count: 23, color: "bg-destructive" },
-  { id: "6", name: "Transport", type: "expense", count: 34, color: "bg-muted-foreground" },
-  { id: "7", name: "Entertainment", type: "expense", count: 18, color: "bg-accent" },
-  { id: "8", name: "Utilities", type: "expense", count: 12, color: "bg-primary" },
-];
-
-const automationRules = [
-  { id: "1", name: "Auto-categorize Amazon", description: "Categorize Amazon transactions as Shopping", enabled: true },
-  { id: "2", name: "Salary Detection", description: "Auto-tag monthly salary credits", enabled: true },
-  { id: "3", name: "Recurring Bill Alert", description: "Notify 3 days before due date", enabled: true },
-  { id: "4", name: "Budget Warning", description: "Alert when 80% budget consumed", enabled: false },
-];
-
 export default function SettingsPage() {
+  const { 
+    categories, 
+    automationRules,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    toggleAutomationRule,
+    addAutomationRule,
+    updateAutomationRule,
+    deleteAutomationRule
+  } = useFinance();
+  
   const [activeTab, setActiveTab] = useState("insights");
-  const [rules, setRules] = useState(automationRules);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
+  const [isInsightModalOpen, setIsInsightModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [selectedRule, setSelectedRule] = useState<AutomationRule | null>(null);
+  const [selectedInsight, setSelectedInsight] = useState<Insight | null>(null);
 
-  const toggleRule = (id: string) => {
-    setRules(rules.map(rule => 
-      rule.id === id ? { ...rule, enabled: !rule.enabled } : rule
-    ));
+  // Notification preferences state
+  const [notifications, setNotifications] = useState({
+    transactionAlerts: true,
+    budgetWarnings: true,
+    billReminders: true,
+    weeklySummary: false,
+  });
+
+  const handleEditCategory = (category: Category) => {
+    setSelectedCategory(category);
+    setIsCategoryModalOpen(true);
+  };
+
+  const handleAddCategory = () => {
+    setSelectedCategory(null);
+    setIsCategoryModalOpen(true);
+  };
+
+  const handleEditRule = (rule: AutomationRule) => {
+    setSelectedRule(rule);
+    setIsRuleModalOpen(true);
+  };
+
+  const handleAddRule = () => {
+    setSelectedRule(null);
+    setIsRuleModalOpen(true);
+  };
+
+  const handleInsightClick = (insight: Insight) => {
+    setSelectedInsight(insight);
+    setIsInsightModalOpen(true);
+  };
+
+  const toggleNotification = (key: keyof typeof notifications) => {
+    setNotifications(prev => {
+      const newValue = !prev[key];
+      toast.success(`${key.replace(/([A-Z])/g, ' $1').trim()} ${newValue ? 'enabled' : 'disabled'}`);
+      return { ...prev, [key]: newValue };
+    });
+  };
+
+  const handlePreferenceClick = (label: string) => {
+    toast.info(`Opening ${label} settings...`);
   };
 
   const getInsightIcon = (type: Insight["type"]) => {
@@ -136,6 +171,7 @@ export default function SettingsPage() {
                     styles.border
                   )}
                   style={{ animationDelay: `${index * 50}ms` }}
+                  onClick={() => handleInsightClick(insight)}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-start gap-4">
@@ -161,39 +197,47 @@ export default function SettingsPage() {
 
           <TabsContent value="automation" className="mt-6">
             <Card className="glass-card">
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Zap className="h-5 w-5 text-primary" />
                   Automation Rules
                 </CardTitle>
+                <Button variant="gradient" size="sm" onClick={handleAddRule}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Rule
+                </Button>
               </CardHeader>
               <CardContent className="space-y-4">
-                {rules.map((rule, index) => (
+                  {automationRules.map((rule, index) => (
                   <div
                     key={rule.id}
-                    className="flex items-center justify-between p-4 rounded-xl bg-muted/50 opacity-0 animate-fade-in"
+                    className="flex items-center justify-between p-4 rounded-xl bg-muted/50 opacity-0 animate-fade-in hover:bg-muted transition-colors cursor-pointer"
                     style={{ animationDelay: `${index * 50}ms` }}
+                    onClick={() => handleEditRule(rule)}
                   >
-                    <div>
+                    <div className="flex-1">
                       <p className="font-medium text-foreground">{rule.name}</p>
                       <p className="text-sm text-muted-foreground">{rule.description}</p>
                     </div>
                     <Switch 
                       checked={rule.enabled}
-                      onCheckedChange={() => toggleRule(rule.id)}
+                      onCheckedChange={() => toggleAutomationRule(rule.id)}
+                      onClick={(e) => e.stopPropagation()}
                     />
                   </div>
                 ))}
-                
-                <Button variant="outline" className="w-full mt-2">
-                  <Zap className="h-4 w-4 mr-2" />
-                  Create New Rule
-                </Button>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="categories" className="mt-6">
+            <div className="flex items-center justify-end mb-4">
+              <Button variant="gradient" onClick={handleAddCategory}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Category
+              </Button>
+            </div>
+            
             <div className="grid gap-6 lg:grid-cols-2">
               <Card className="glass-card">
                 <CardHeader>
@@ -206,14 +250,18 @@ export default function SettingsPage() {
                   {categories.filter(c => c.type === "income").map((category, index) => (
                     <div
                       key={category.id}
-                      className="flex items-center justify-between p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors cursor-pointer opacity-0 animate-fade-in"
+                      className="flex items-center justify-between p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors cursor-pointer opacity-0 animate-fade-in group"
                       style={{ animationDelay: `${index * 50}ms` }}
+                      onClick={() => handleEditCategory(category)}
                     >
                       <div className="flex items-center gap-3">
                         <div className={cn("h-3 w-3 rounded-full", category.color)} />
                         <span className="font-medium text-foreground">{category.name}</span>
                       </div>
-                      <Badge variant="secondary">{category.count} txns</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">{category.count} txns</Badge>
+                        <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
                     </div>
                   ))}
                 </CardContent>
@@ -230,14 +278,18 @@ export default function SettingsPage() {
                   {categories.filter(c => c.type === "expense").map((category, index) => (
                     <div
                       key={category.id}
-                      className="flex items-center justify-between p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors cursor-pointer opacity-0 animate-fade-in"
+                      className="flex items-center justify-between p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors cursor-pointer opacity-0 animate-fade-in group"
                       style={{ animationDelay: `${index * 50}ms` }}
+                      onClick={() => handleEditCategory(category)}
                     >
                       <div className="flex items-center gap-3">
                         <div className={cn("h-3 w-3 rounded-full", category.color)} />
                         <span className="font-medium text-foreground">{category.name}</span>
                       </div>
-                      <Badge variant="secondary">{category.count} txns</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">{category.count} txns</Badge>
+                        <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
                     </div>
                   ))}
                 </CardContent>
@@ -256,17 +308,25 @@ export default function SettingsPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {[
-                    { label: "Transaction Alerts", description: "Get notified for every transaction" },
-                    { label: "Budget Warnings", description: "Alert when nearing budget limits" },
-                    { label: "Bill Reminders", description: "Reminder before bill due dates" },
-                    { label: "Weekly Summary", description: "Weekly spending summary digest" },
-                  ].map((item, index) => (
-                    <div key={index} className="flex items-center justify-between">
+                    { key: "transactionAlerts" as const, label: "Transaction Alerts", description: "Get notified for every transaction" },
+                    { key: "budgetWarnings" as const, label: "Budget Warnings", description: "Alert when nearing budget limits" },
+                    { key: "billReminders" as const, label: "Bill Reminders", description: "Reminder before bill due dates" },
+                    { key: "weeklySummary" as const, label: "Weekly Summary", description: "Weekly spending summary digest" },
+                  ].map((item) => (
+                    <div 
+                      key={item.key} 
+                      className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => toggleNotification(item.key)}
+                    >
                       <div>
                         <p className="font-medium text-foreground">{item.label}</p>
                         <p className="text-sm text-muted-foreground">{item.description}</p>
                       </div>
-                      <Switch defaultChecked={index < 3} />
+                      <Switch 
+                        checked={notifications[item.key]} 
+                        onCheckedChange={() => toggleNotification(item.key)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
                     </div>
                   ))}
                 </CardContent>
@@ -289,6 +349,7 @@ export default function SettingsPage() {
                     <div 
                       key={index}
                       className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => handlePreferenceClick(item.label)}
                     >
                       <div className="flex items-center gap-3">
                         <item.icon className="h-5 w-5 text-muted-foreground" />
@@ -303,7 +364,11 @@ export default function SettingsPage() {
                 </CardContent>
               </Card>
 
-              <Button variant="outline" className="w-full text-destructive hover:text-destructive">
+              <Button 
+                variant="outline" 
+                className="w-full text-destructive hover:text-destructive"
+                onClick={() => toast.info("Sign out functionality would be implemented with authentication")}
+              >
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
               </Button>
@@ -311,6 +376,39 @@ export default function SettingsPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Category Modal */}
+      <CategoryModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => {
+          setIsCategoryModalOpen(false);
+          setSelectedCategory(null);
+        }}
+        onSave={addCategory}
+        onUpdate={updateCategory}
+        onDelete={deleteCategory}
+        category={selectedCategory}
+      />
+
+      {/* Automation Rule Modal */}
+      <AutomationRuleModal
+        isOpen={isRuleModalOpen}
+        onClose={() => {
+          setIsRuleModalOpen(false);
+          setSelectedRule(null);
+        }}
+        onSave={addAutomationRule}
+        onUpdate={updateAutomationRule}
+        onDelete={deleteAutomationRule}
+        rule={selectedRule}
+      />
+
+      {/* Insight Detail Modal */}
+      <InsightDetailModal
+        isOpen={isInsightModalOpen}
+        onClose={() => setIsInsightModalOpen(false)}
+        insight={selectedInsight}
+      />
     </>
   );
 }

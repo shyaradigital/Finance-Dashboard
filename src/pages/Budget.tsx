@@ -13,51 +13,27 @@ import {
   TrendingDown,
   Calendar,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Plus
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { useFinance } from "@/contexts/FinanceContext";
+import { BudgetModal, CommitmentModal } from "@/components/modals";
+import { BudgetCategory, UpcomingCommitment } from "@/hooks/useFinanceData";
 
-interface BudgetCategory {
-  id: string;
-  name: string;
-  icon: React.ElementType;
-  budget: number;
-  spent: number;
-  color: string;
-}
-
-const budgetCategories: BudgetCategory[] = [
-  { id: "1", name: "Housing", icon: Home, budget: 30000, spent: 25000, color: "bg-primary" },
-  { id: "2", name: "Food & Dining", icon: Utensils, budget: 15000, spent: 12450, color: "bg-accent" },
-  { id: "3", name: "Shopping", icon: ShoppingBag, budget: 10000, spent: 12499, color: "bg-destructive" },
-  { id: "4", name: "Transport", icon: Car, budget: 5000, spent: 3240, color: "bg-success" },
-  { id: "5", name: "Entertainment", icon: Gamepad2, budget: 5000, spent: 2649, color: "bg-warning" },
-  { id: "6", name: "Utilities", icon: Wifi, budget: 5000, spent: 4200, color: "bg-primary" },
-  { id: "7", name: "Health", icon: Heart, budget: 3000, spent: 1500, color: "bg-success" },
-  { id: "8", name: "Education", icon: GraduationCap, budget: 5000, spent: 3000, color: "bg-accent" },
-];
-
-interface UpcomingCommitment {
-  id: string;
-  name: string;
-  amount: number;
-  dueDate: string;
-  type: "bill" | "subscription" | "loan";
-}
-
-const upcomingCommitments: UpcomingCommitment[] = [
-  { id: "1", name: "Rent", amount: 25000, dueDate: "Dec 28", type: "bill" },
-  { id: "2", name: "Electricity Bill", amount: 2500, dueDate: "Dec 29", type: "bill" },
-  { id: "3", name: "Netflix", amount: 649, dueDate: "Jan 1", type: "subscription" },
-  { id: "4", name: "Car Loan EMI", amount: 15000, dueDate: "Jan 5", type: "loan" },
-  { id: "5", name: "Spotify", amount: 119, dueDate: "Jan 7", type: "subscription" },
-];
-
-function BudgetCard({ category, delay }: { category: BudgetCategory; delay: number }) {
+function BudgetCard({ 
+  category, 
+  delay,
+  onClick 
+}: { 
+  category: BudgetCategory; 
+  delay: number;
+  onClick: () => void;
+}) {
   const Icon = category.icon;
   const percentage = (category.spent / category.budget) * 100;
   const isOverBudget = percentage > 100;
@@ -66,10 +42,11 @@ function BudgetCard({ category, delay }: { category: BudgetCategory; delay: numb
   return (
     <Card 
       className={cn(
-        "glass-card opacity-0 animate-fade-in transition-all duration-200 hover:shadow-md",
+        "glass-card opacity-0 animate-fade-in transition-all duration-200 hover:shadow-md cursor-pointer",
         isOverBudget && "border-destructive/30"
       )}
       style={{ animationDelay: `${delay}ms` }}
+      onClick={onClick}
     >
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-3">
@@ -115,12 +92,47 @@ function BudgetCard({ category, delay }: { category: BudgetCategory; delay: numb
 }
 
 export default function Budget() {
+  const { 
+    budgetCategories, 
+    commitments, 
+    addBudgetCategory, 
+    updateBudgetCategory, 
+    deleteBudgetCategory,
+    addCommitment,
+    updateCommitment,
+    deleteCommitment
+  } = useFinance();
+  
   const [activeTab, setActiveTab] = useState("budget");
+  const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
+  const [isCommitmentModalOpen, setIsCommitmentModalOpen] = useState(false);
+  const [selectedBudget, setSelectedBudget] = useState<BudgetCategory | null>(null);
+  const [selectedCommitment, setSelectedCommitment] = useState<UpcomingCommitment | null>(null);
   
   const totalBudget = budgetCategories.reduce((sum, c) => sum + c.budget, 0);
   const totalSpent = budgetCategories.reduce((sum, c) => sum + c.spent, 0);
   const overallPercentage = (totalSpent / totalBudget) * 100;
-  const totalCommitments = upcomingCommitments.reduce((sum, c) => sum + c.amount, 0);
+  const totalCommitments = commitments.reduce((sum, c) => sum + c.amount, 0);
+
+  const handleEditBudget = (budget: BudgetCategory) => {
+    setSelectedBudget(budget);
+    setIsBudgetModalOpen(true);
+  };
+
+  const handleAddBudget = () => {
+    setSelectedBudget(null);
+    setIsBudgetModalOpen(true);
+  };
+
+  const handleEditCommitment = (commitment: UpcomingCommitment) => {
+    setSelectedCommitment(commitment);
+    setIsCommitmentModalOpen(true);
+  };
+
+  const handleAddCommitment = () => {
+    setSelectedCommitment(null);
+    setIsCommitmentModalOpen(true);
+  };
 
   return (
     <>
@@ -161,7 +173,10 @@ export default function Budget() {
             </CardContent>
           </Card>
           
-          <Card className="glass-card bg-gradient-to-br from-warning/5 to-warning/10">
+          <Card 
+            className="glass-card bg-gradient-to-br from-warning/5 to-warning/10 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={handleAddCommitment}
+          >
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
@@ -179,32 +194,53 @@ export default function Budget() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-card border border-border p-1 h-auto">
-            <TabsTrigger value="budget" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Monthly Budget
-            </TabsTrigger>
-            <TabsTrigger value="commitments" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Upcoming
-            </TabsTrigger>
-            <TabsTrigger value="forecast" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Forecast
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between">
+            <TabsList className="bg-card border border-border p-1 h-auto">
+              <TabsTrigger value="budget" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                Monthly Budget
+              </TabsTrigger>
+              <TabsTrigger value="commitments" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                Upcoming
+              </TabsTrigger>
+              <TabsTrigger value="forecast" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                Forecast
+              </TabsTrigger>
+            </TabsList>
+            
+            {activeTab === "budget" && (
+              <Button variant="gradient" className="gap-2" onClick={handleAddBudget}>
+                <Plus className="h-4 w-4" />
+                Add Budget
+              </Button>
+            )}
+            {activeTab === "commitments" && (
+              <Button variant="gradient" className="gap-2" onClick={handleAddCommitment}>
+                <Plus className="h-4 w-4" />
+                Add Commitment
+              </Button>
+            )}
+          </div>
 
           <TabsContent value="budget" className="mt-6">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {budgetCategories.map((category, index) => (
-                <BudgetCard key={category.id} category={category} delay={index * 50} />
+                <BudgetCard 
+                  key={category.id} 
+                  category={category} 
+                  delay={index * 50}
+                  onClick={() => handleEditBudget(category)}
+                />
               ))}
             </div>
           </TabsContent>
 
           <TabsContent value="commitments" className="mt-6 space-y-3">
-            {upcomingCommitments.map((commitment, index) => (
+            {commitments.map((commitment, index) => (
               <Card 
                 key={commitment.id} 
-                className="glass-card opacity-0 animate-fade-in"
+                className="glass-card opacity-0 animate-fade-in cursor-pointer hover:shadow-md transition-shadow"
                 style={{ animationDelay: `${index * 50}ms` }}
+                onClick={() => handleEditCommitment(commitment)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
@@ -269,6 +305,32 @@ export default function Budget() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Budget Modal */}
+      <BudgetModal
+        isOpen={isBudgetModalOpen}
+        onClose={() => {
+          setIsBudgetModalOpen(false);
+          setSelectedBudget(null);
+        }}
+        onSave={addBudgetCategory}
+        onUpdate={updateBudgetCategory}
+        onDelete={deleteBudgetCategory}
+        budget={selectedBudget}
+      />
+
+      {/* Commitment Modal */}
+      <CommitmentModal
+        isOpen={isCommitmentModalOpen}
+        onClose={() => {
+          setIsCommitmentModalOpen(false);
+          setSelectedCommitment(null);
+        }}
+        onSave={addCommitment}
+        onUpdate={updateCommitment}
+        onDelete={deleteCommitment}
+        commitment={selectedCommitment}
+      />
     </>
   );
 }
