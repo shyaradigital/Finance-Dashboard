@@ -18,59 +18,24 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { useFinance } from "@/contexts/FinanceContext";
+import { AccountModal, CreditCardModal, VaultModal } from "@/components/modals";
+import { BankAccount, CreditCardType, VaultItem } from "@/hooks/useFinanceData";
 
-interface BankAccount {
-  id: string;
-  name: string;
-  bank: string;
-  type: "savings" | "current" | "fd";
-  balance: number;
-  accountNumber: string;
-  color: string;
-}
-
-interface CreditCardType {
-  id: string;
-  name: string;
-  bank: string;
-  lastFour: string;
-  limit: number;
-  used: number;
-  dueDate: string;
-  minDue: number;
-  color: string;
-}
-
-interface VaultItem {
-  id: string;
-  title: string;
-  category: string;
-  lastUpdated: string;
-}
-
-const bankAccounts: BankAccount[] = [
-  { id: "1", name: "Primary Savings", bank: "HDFC Bank", type: "savings", balance: 245890, accountNumber: "XXXX4521", color: "from-blue-500 to-blue-600" },
-  { id: "2", name: "Salary Account", bank: "ICICI Bank", type: "savings", balance: 78560, accountNumber: "XXXX8934", color: "from-orange-500 to-orange-600" },
-  { id: "3", name: "Fixed Deposit", bank: "SBI", type: "fd", balance: 500000, accountNumber: "XXXX2156", color: "from-green-500 to-green-600" },
-];
-
-const creditCards: CreditCardType[] = [
-  { id: "1", name: "Regalia", bank: "HDFC", lastFour: "4521", limit: 300000, used: 78500, dueDate: "Jan 5", minDue: 7850, color: "from-purple-500 to-purple-600" },
-  { id: "2", name: "Amazon Pay", bank: "ICICI", lastFour: "8934", limit: 150000, used: 23400, dueDate: "Jan 10", minDue: 2340, color: "from-yellow-500 to-orange-500" },
-];
-
-const vaultItems: VaultItem[] = [
-  { id: "1", title: "PAN Card", category: "Identity", lastUpdated: "Dec 15, 2024" },
-  { id: "2", title: "Aadhaar Card", category: "Identity", lastUpdated: "Dec 15, 2024" },
-  { id: "3", title: "Passport", category: "Travel", lastUpdated: "Nov 20, 2024" },
-  { id: "4", title: "Insurance Policy", category: "Documents", lastUpdated: "Oct 5, 2024" },
-];
-
-function BankAccountCard({ account, delay }: { account: BankAccount; delay: number }) {
+function BankAccountCard({ 
+  account, 
+  delay,
+  onClick 
+}: { 
+  account: BankAccount; 
+  delay: number;
+  onClick: () => void;
+}) {
   return (
     <Card 
-      className="glass-card overflow-hidden opacity-0 animate-fade-in hover:shadow-lg transition-all duration-300 group"
+      className="glass-card overflow-hidden opacity-0 animate-fade-in hover:shadow-lg transition-all duration-300 cursor-pointer"
       style={{ animationDelay: `${delay}ms` }}
+      onClick={onClick}
     >
       <div className={cn("h-2 bg-gradient-to-r", account.color)} />
       <CardContent className="p-5">
@@ -92,9 +57,7 @@ function BankAccountCard({ account, delay }: { account: BankAccount; delay: numb
           
           <div className="flex items-center justify-between pt-3 border-t border-border">
             <span className="text-sm text-muted-foreground">A/C {account.accountNumber}</span>
-            <Button variant="ghost" size="icon-sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </div>
         </div>
       </CardContent>
@@ -102,14 +65,23 @@ function BankAccountCard({ account, delay }: { account: BankAccount; delay: numb
   );
 }
 
-function CreditCardCard({ card, delay }: { card: CreditCardType; delay: number }) {
+function CreditCardCard({ 
+  card, 
+  delay,
+  onClick 
+}: { 
+  card: CreditCardType; 
+  delay: number;
+  onClick: () => void;
+}) {
   const utilization = (card.used / card.limit) * 100;
   const isHighUtilization = utilization > 70;
 
   return (
     <Card 
-      className="glass-card overflow-hidden opacity-0 animate-fade-in hover:shadow-lg transition-all duration-300"
+      className="glass-card overflow-hidden opacity-0 animate-fade-in hover:shadow-lg transition-all duration-300 cursor-pointer"
       style={{ animationDelay: `${delay}ms` }}
+      onClick={onClick}
     >
       <div className={cn("h-2 bg-gradient-to-r", card.color)} />
       <CardContent className="p-5">
@@ -160,11 +132,64 @@ function CreditCardCard({ card, delay }: { card: CreditCardType; delay: number }
 }
 
 export default function Accounts() {
+  const { 
+    bankAccounts, 
+    creditCards, 
+    vaultItems,
+    addBankAccount,
+    updateBankAccount,
+    deleteBankAccount,
+    addCreditCard,
+    updateCreditCard,
+    deleteCreditCard,
+    addVaultItem,
+    updateVaultItem,
+    deleteVaultItem
+  } = useFinance();
+  
   const [activeTab, setActiveTab] = useState("banks");
   const [showVaultItems, setShowVaultItems] = useState(false);
+  
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [isCardModalOpen, setIsCardModalOpen] = useState(false);
+  const [isVaultModalOpen, setIsVaultModalOpen] = useState(false);
+  
+  const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
+  const [selectedCard, setSelectedCard] = useState<CreditCardType | null>(null);
+  const [selectedVaultItem, setSelectedVaultItem] = useState<VaultItem | null>(null);
 
   const totalBalance = bankAccounts.reduce((sum, acc) => sum + acc.balance, 0);
   const totalCredit = creditCards.reduce((sum, card) => sum + card.used, 0);
+
+  const handleEditAccount = (account: BankAccount) => {
+    setSelectedAccount(account);
+    setIsAccountModalOpen(true);
+  };
+
+  const handleAddAccount = () => {
+    setSelectedAccount(null);
+    setIsAccountModalOpen(true);
+  };
+
+  const handleEditCard = (card: CreditCardType) => {
+    setSelectedCard(card);
+    setIsCardModalOpen(true);
+  };
+
+  const handleAddCard = () => {
+    setSelectedCard(null);
+    setIsCardModalOpen(true);
+  };
+
+  const handleEditVaultItem = (item: VaultItem) => {
+    setSelectedVaultItem(item);
+    setIsVaultModalOpen(true);
+  };
+
+  const handleAddVaultItem = () => {
+    setSelectedVaultItem(null);
+    setIsVaultModalOpen(true);
+  };
 
   return (
     <>
@@ -227,9 +252,17 @@ export default function Accounts() {
           <TabsContent value="banks" className="mt-6">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {bankAccounts.map((account, index) => (
-                <BankAccountCard key={account.id} account={account} delay={index * 50} />
+                <BankAccountCard 
+                  key={account.id} 
+                  account={account} 
+                  delay={index * 50}
+                  onClick={() => handleEditAccount(account)}
+                />
               ))}
-              <Card className="glass-card border-dashed flex items-center justify-center min-h-[200px] cursor-pointer hover:border-primary/50 transition-colors">
+              <Card 
+                className="glass-card border-dashed flex items-center justify-center min-h-[200px] cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={handleAddAccount}
+              >
                 <div className="text-center">
                   <Plus className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">Add Account</p>
@@ -241,9 +274,17 @@ export default function Accounts() {
           <TabsContent value="cards" className="mt-6">
             <div className="grid gap-4 sm:grid-cols-2">
               {creditCards.map((card, index) => (
-                <CreditCardCard key={card.id} card={card} delay={index * 50} />
+                <CreditCardCard 
+                  key={card.id} 
+                  card={card} 
+                  delay={index * 50}
+                  onClick={() => handleEditCard(card)}
+                />
               ))}
-              <Card className="glass-card border-dashed flex items-center justify-center min-h-[250px] cursor-pointer hover:border-primary/50 transition-colors">
+              <Card 
+                className="glass-card border-dashed flex items-center justify-center min-h-[250px] cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={handleAddCard}
+              >
                 <div className="text-center">
                   <Plus className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">Add Card</p>
@@ -273,6 +314,7 @@ export default function Accounts() {
                     key={item.id}
                     className="flex items-center justify-between p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors cursor-pointer group opacity-0 animate-fade-in"
                     style={{ animationDelay: `${index * 50}ms` }}
+                    onClick={() => handleEditVaultItem(item)}
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
@@ -289,7 +331,7 @@ export default function Accounts() {
                   </div>
                 ))}
                 
-                <Button variant="outline" className="w-full mt-4">
+                <Button variant="outline" className="w-full mt-4" onClick={handleAddVaultItem}>
                   <Plus className="h-4 w-4 mr-2" />
                   Add to Vault
                 </Button>
@@ -298,6 +340,45 @@ export default function Accounts() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Account Modal */}
+      <AccountModal
+        isOpen={isAccountModalOpen}
+        onClose={() => {
+          setIsAccountModalOpen(false);
+          setSelectedAccount(null);
+        }}
+        onSave={addBankAccount}
+        onUpdate={updateBankAccount}
+        onDelete={deleteBankAccount}
+        account={selectedAccount}
+      />
+
+      {/* Credit Card Modal */}
+      <CreditCardModal
+        isOpen={isCardModalOpen}
+        onClose={() => {
+          setIsCardModalOpen(false);
+          setSelectedCard(null);
+        }}
+        onSave={addCreditCard}
+        onUpdate={updateCreditCard}
+        onDelete={deleteCreditCard}
+        card={selectedCard}
+      />
+
+      {/* Vault Modal */}
+      <VaultModal
+        isOpen={isVaultModalOpen}
+        onClose={() => {
+          setIsVaultModalOpen(false);
+          setSelectedVaultItem(null);
+        }}
+        onSave={addVaultItem}
+        onUpdate={updateVaultItem}
+        onDelete={deleteVaultItem}
+        item={selectedVaultItem}
+      />
     </>
   );
 }
