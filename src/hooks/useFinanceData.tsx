@@ -63,6 +63,18 @@ export interface CreditCardType {
   color: string;
 }
 
+export interface DebitCardType {
+  id: string;
+  name: string;
+  bank: string;
+  lastFour: string;
+  linkedAccount: string;
+  cardNetwork: "Visa" | "Mastercard" | "RuPay";
+  expiryDate: string;
+  isActive: boolean;
+  color: string;
+}
+
 export interface VaultItem {
   id: string;
   title: string;
@@ -165,6 +177,12 @@ const initialCreditCards: CreditCardType[] = [
   { id: "2", name: "Amazon Pay", bank: "ICICI", lastFour: "8934", limit: 150000, used: 23400, dueDate: "Jan 10", minDue: 2340, color: "from-yellow-500 to-orange-500" },
 ];
 
+const initialDebitCards: DebitCardType[] = [
+  { id: "1", name: "Platinum Debit", bank: "HDFC", lastFour: "4521", linkedAccount: "Primary Savings", cardNetwork: "Visa", expiryDate: "12/27", isActive: true, color: "from-blue-500 to-blue-600" },
+  { id: "2", name: "RuPay Debit", bank: "ICICI", lastFour: "8934", linkedAccount: "Salary Account", cardNetwork: "RuPay", expiryDate: "08/26", isActive: true, color: "from-orange-500 to-orange-600" },
+  { id: "3", name: "Classic Debit", bank: "SBI", lastFour: "2156", linkedAccount: "Fixed Deposit", cardNetwork: "Mastercard", expiryDate: "03/25", isActive: false, color: "from-green-500 to-green-600" },
+];
+
 const initialVaultItems: VaultItem[] = [
   { id: "1", title: "PAN Card", category: "Identity", value: "ABCDE1234F", type: "text", lastUpdated: "Dec 15, 2024" },
   { id: "2", title: "Aadhaar Card", category: "Identity", value: "XXXX XXXX 1234", type: "text", lastUpdated: "Dec 15, 2024" },
@@ -212,6 +230,7 @@ export function useFinanceData() {
   const [commitments, setCommitments] = useState<UpcomingCommitment[]>(initialCommitments);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(initialBankAccounts);
   const [creditCards, setCreditCards] = useState<CreditCardType[]>(initialCreditCards);
+  const [debitCards, setDebitCards] = useState<DebitCardType[]>(initialDebitCards);
   const [vaultItems, setVaultItems] = useState<VaultItem[]>(initialVaultItems);
   const [investments, setInvestments] = useState<Investment[]>(initialInvestments);
   const [sips, setSIPs] = useState<SIP[]>(initialSIPs);
@@ -296,6 +315,20 @@ export function useFinanceData() {
     setCreditCards(prev => prev.filter(c => c.id !== id));
   }, []);
 
+  // ============ Debit Card Operations ============
+  const addDebitCard = useCallback((card: Omit<DebitCardType, "id">) => {
+    const newCard = { ...card, id: generateId() };
+    setDebitCards(prev => [...prev, newCard]);
+    return newCard;
+  }, []);
+
+  const updateDebitCard = useCallback((id: string, updates: Partial<DebitCardType>) => {
+    setDebitCards(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+  }, []);
+
+  const deleteDebitCard = useCallback((id: string) => {
+    setDebitCards(prev => prev.filter(c => c.id !== id));
+  }, []);
   // ============ Vault Operations ============
   const addVaultItem = useCallback((item: Omit<VaultItem, "id">) => {
     const newItem = { ...item, id: generateId() };
@@ -382,6 +415,7 @@ export function useFinanceData() {
     commitments,
     bankAccounts,
     creditCards,
+    debitCards,
     vaultItems,
     investments,
     sips,
@@ -412,6 +446,11 @@ export function useFinanceData() {
     addCreditCard,
     updateCreditCard,
     deleteCreditCard,
+    
+    // Debit Card Operations
+    addDebitCard,
+    updateDebitCard,
+    deleteDebitCard,
     
     // Vault Operations
     addVaultItem,
