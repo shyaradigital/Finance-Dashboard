@@ -76,7 +76,7 @@ export default function SummaryStrip() {
         icon={TrendingUp}
         label="This Month Income"
         value="₹1,25,000"
-        trend="Salary credited"
+        trend="↑ 8.5% from 3-month avg"
         trendType="positive"
         variant="income"
         delay={100}
