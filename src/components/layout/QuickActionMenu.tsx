@@ -27,7 +27,7 @@ export default function QuickActionMenu({ isOpen, onToggle }: QuickActionMenuPro
       )}
 
       {/* Action Items */}
-      <div className="fixed bottom-24 right-4 z-50 flex flex-col-reverse items-end gap-3 lg:bottom-8 lg:right-8">
+      <div className="fixed bottom-20 right-4 z-50 flex flex-col-reverse items-end gap-3 pb-4 lg:bottom-24 lg:right-8">
         {actions.map((action, index) => (
           <div
             key={action.label}
@@ -39,7 +39,7 @@ export default function QuickActionMenu({ isOpen, onToggle }: QuickActionMenuPro
             )}
             style={{ transitionDelay: isOpen ? `${index * 50}ms` : '0ms' }}
           >
-            <span className="rounded-lg bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-md">
+            <span className="rounded-lg bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-md border border-border/50">
               {action.label}
             </span>
             <button
