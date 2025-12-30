@@ -37,7 +37,9 @@ export class AutomationService {
     const rule = await prisma.automationRule.create({
       data: {
         userId,
-        ...input,
+        name: input.name,
+        description: input.description || "",
+        enabled: input.enabled ?? true,
         ruleConfig: input.ruleConfig
           ? JSON.stringify(input.ruleConfig)
           : "{}",

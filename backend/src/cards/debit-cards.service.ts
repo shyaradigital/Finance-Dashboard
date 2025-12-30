@@ -101,7 +101,13 @@ export class DebitCardsService {
     const card = await prisma.debitCard.create({
       data: {
         userId,
-        ...cardData,
+        name: cardData.name,
+        bank: cardData.bank,
+        lastFour: cardData.lastFour,
+        cardNetwork: cardData.cardNetwork,
+        expiryDate: cardData.expiryDate || null,
+        isActive: cardData.isActive ?? true,
+        color: cardData.color || null,
         linkedAccountId,
       },
       include: {
@@ -149,9 +155,22 @@ export class DebitCardsService {
       }
     }
 
+    const { linkedAccount, ...updateData } = input;
+    
+    // Build update data, excluding undefined values and linkedAccount
+    const data: any = {};
+    if (updateData.name !== undefined) data.name = updateData.name;
+    if (updateData.bank !== undefined) data.bank = updateData.bank;
+    if (updateData.lastFour !== undefined) data.lastFour = updateData.lastFour;
+    if (updateData.cardNetwork !== undefined) data.cardNetwork = updateData.cardNetwork;
+    if (updateData.expiryDate !== undefined) data.expiryDate = updateData.expiryDate || null;
+    if (updateData.isActive !== undefined) data.isActive = updateData.isActive;
+    if (updateData.color !== undefined) data.color = updateData.color || null;
+    if (updateData.linkedAccountId !== undefined) data.linkedAccountId = updateData.linkedAccountId;
+    
     return prisma.debitCard.update({
       where: { id: cardId },
-      data: input,
+      data,
       include: {
         linkedAccount: {
           select: {

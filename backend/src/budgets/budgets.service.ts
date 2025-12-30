@@ -47,7 +47,7 @@ export class BudgetsService {
           isOverBudget: spentNum > limit,
           isNearLimit:
             budget.alertThreshold !== null &&
-            percentage >= (budget.alertThreshold || 80),
+            percentage >= Number(budget.alertThreshold || 80),
         };
       })
     );
@@ -102,7 +102,7 @@ export class BudgetsService {
       isOverBudget: spentNum > limit,
       isNearLimit:
         budget.alertThreshold !== null &&
-        percentage >= (budget.alertThreshold || 80),
+        percentage >= Number(budget.alertThreshold || 80),
     };
   }
 
@@ -220,7 +220,7 @@ export class BudgetsService {
       isOverBudget: spentNum > limit,
       isNearLimit:
         updated.alertThreshold !== null &&
-        percentage >= (updated.alertThreshold || 80),
+        percentage >= Number(updated.alertThreshold || 80),
     };
   }
 
