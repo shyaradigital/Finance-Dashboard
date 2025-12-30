@@ -30,18 +30,24 @@ If you don't need the existing free database:
 
 ### Option 3: Use a Paid Database Plan
 
-Update `render.yaml` to use a paid plan (e.g., "standard"):
+Update `render.yaml` to use a current paid plan (e.g., "basic-256mb"):
 
 ```yaml
 databases:
   - name: finance-tracker-db
     databaseName: finance_tracker
     user: finance_tracker_user
-    plan: standard  # Paid plan (~$7/month)
+    plan: basic-256mb  # Current Render plan format
     region: oregon
 ```
 
-**Cost:** ~$7/month for the database
+**Cost:** Check Render's current pricing for `basic-256mb` plan (typically ~$7-10/month)
+
+**Note:** Render now uses flexible plans with names like:
+- `basic-256mb` - Small database
+- `basic-512mb` - Medium database  
+- `basic-1gb` - Large database
+- And other sizes as needed
 
 ### Option 4: Manual Database Setup
 
