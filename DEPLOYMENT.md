@@ -42,7 +42,7 @@ This guide will help you deploy the Finance Tracker application to Render.
    - **Database**: `finance_tracker`
    - **User**: `finance_tracker_user`
    - **Region**: Choose closest to you
-   - **Plan**: Starter (Free tier available)
+   - **Plan**: Free (or Standard for production)
 4. Click "Create Database"
 5. Copy the **Internal Database URL** (you'll need this)
 
