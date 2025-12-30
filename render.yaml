@@ -40,6 +40,6 @@ databases:
   - name: finance-tracker-db
     databaseName: finance_tracker
     user: finance_tracker_user
-    plan: starter
+    plan: free
     region: oregon
 
