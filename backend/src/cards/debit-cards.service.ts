@@ -105,7 +105,7 @@ export class DebitCardsService {
         bank: cardData.bank,
         lastFour: cardData.lastFour,
         cardNetwork: cardData.cardNetwork,
-        expiryDate: cardData.expiryDate || null,
+        expiryDate: cardData.expiryDate || "",
         isActive: cardData.isActive ?? true,
         color: cardData.color || null,
         linkedAccountId,
@@ -163,7 +163,7 @@ export class DebitCardsService {
     if (updateData.bank !== undefined) data.bank = updateData.bank;
     if (updateData.lastFour !== undefined) data.lastFour = updateData.lastFour;
     if (updateData.cardNetwork !== undefined) data.cardNetwork = updateData.cardNetwork;
-    if (updateData.expiryDate !== undefined) data.expiryDate = updateData.expiryDate || null;
+    if (updateData.expiryDate !== undefined) data.expiryDate = updateData.expiryDate || "";
     if (updateData.isActive !== undefined) data.isActive = updateData.isActive;
     if (updateData.color !== undefined) data.color = updateData.color || null;
     if (updateData.linkedAccountId !== undefined) data.linkedAccountId = updateData.linkedAccountId;
