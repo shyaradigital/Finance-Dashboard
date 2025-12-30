@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import QuickActionMenu from "./QuickActionMenu";
 import { useAuth } from "@/contexts/AuthContext";
+import { useFinance } from "@/contexts/FinanceContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,8 +46,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuth();
+  const { bankAccounts, investments } = useFinance();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
+
+  // Calculate Net Worth from accounts and investments
+  const totalAccountBalance = bankAccounts.reduce((sum, account) => sum + account.balance, 0);
+  const totalInvestmentValue = investments.reduce((sum, inv) => sum + inv.current, 0);
+  const netWorth = totalAccountBalance + totalInvestmentValue;
 
   const handleLogout = () => {
     logout();
@@ -92,8 +99,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="border-t border-border p-4">
             <div className="rounded-xl bg-gradient-to-br from-primary/10 to-accent/10 p-4">
               <p className="text-xs font-medium text-muted-foreground">Net Worth</p>
-              <p className="mt-1 text-xl font-bold text-foreground">₹24,56,890</p>
-              <p className="mt-1 text-xs text-success">+12.5% this month</p>
+              <p className="mt-1 text-xl font-bold text-foreground">
+                ₹{netWorth.toLocaleString('en-IN')}
+              </p>
             </div>
           </div>
         </div>

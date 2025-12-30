@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { 
   Eye, 
   EyeOff, 
@@ -31,6 +31,8 @@ import { VaultItem } from "@/hooks/useFinanceData";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import PasswordVerifyModal from "./PasswordVerifyModal";
+import { useVault } from "@/hooks/useFinanceQueries";
+import { useSettingsOptions } from "@/hooks/useSettingsOptions";
 
 interface VaultModalProps {
   isOpen: boolean;
@@ -41,8 +43,6 @@ interface VaultModalProps {
   item?: VaultItem | null;
 }
 
-const categoryOptions = ["Identity", "Travel", "Documents", "Financial", "Medical", "Other"];
-
 export default function VaultModal({
   isOpen,
   onClose,
@@ -51,8 +51,25 @@ export default function VaultModal({
   onDelete,
   item,
 }: VaultModalProps) {
+  const { vaultItems } = useVault();
+  const { options } = useSettingsOptions();
+  
+  // Get categories from existing vault items or user preferences
+  const categoryOptions = useMemo(() => {
+    // First, try user preferences
+    if (options.vaultCategories.length > 0) {
+      return options.vaultCategories;
+    }
+    // Otherwise, derive from existing vault items
+    const categoriesFromItems = Array.from(
+      new Set(vaultItems.map(item => item.category))
+    ).filter(Boolean);
+    return categoriesFromItems;
+  }, [options.vaultCategories, vaultItems]);
+
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
+  const [customCategory, setCustomCategory] = useState("");
   const [value, setValue] = useState("");
   const [showValue, setShowValue] = useState(false);
   const [entryType, setEntryType] = useState<"text" | "document">("text");
@@ -74,9 +91,11 @@ export default function VaultModal({
       setEntryType(item.type || "text");
       setDocumentName(item.documentName || "");
       setDocumentPreview(item.documentUrl || null);
+      setCustomCategory("");
     } else {
       setTitle("");
       setCategory("");
+      setCustomCategory("");
       setValue("");
       setEntryType("text");
       setDocumentFile(null);
@@ -134,7 +153,9 @@ export default function VaultModal({
   };
 
   const handleSave = () => {
-    if (!title || !category) {
+    // Use custom category if provided, otherwise use selected category
+    const finalCategory = customCategory.trim() || category;
+    if (!title || !finalCategory) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -146,7 +167,7 @@ export default function VaultModal({
 
     const vaultData: Omit<VaultItem, "id"> = {
       title,
-      category,
+      category: finalCategory,
       value: entryType === "text" ? (value || "••••••••") : "",
       type: entryType,
       documentName: entryType === "document" ? documentName : undefined,
@@ -262,18 +283,40 @@ export default function VaultModal({
               {/* Category */}
               <div className="space-y-2">
                 <Label>Category</Label>
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categoryOptions.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {categoryOptions.length > 0 ? (
+                  <Select value={category} onValueChange={(v) => {
+                    setCategory(v);
+                    setCustomCategory("");
+                  }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categoryOptions.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="__custom__">+ Add Custom Category</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    placeholder="e.g., Identity, Travel, Documents"
+                    value={customCategory || category}
+                    onChange={(e) => {
+                      setCustomCategory(e.target.value);
+                      setCategory(e.target.value);
+                    }}
+                  />
+                )}
+                {category === "__custom__" && (
+                  <Input
+                    placeholder="Enter category name"
+                    value={customCategory}
+                    onChange={(e) => setCustomCategory(e.target.value)}
+                  />
+                )}
               </div>
 
               <TabsContent value="text" className="mt-0 space-y-4">

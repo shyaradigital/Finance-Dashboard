@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { BankAccount } from "@/hooks/useFinanceData";
 import { toast } from "sonner";
+import { useSettingsOptions } from "@/hooks/useSettingsOptions";
 
 interface AccountModalProps {
   isOpen: boolean;
@@ -26,13 +27,6 @@ interface AccountModalProps {
   onDelete?: (id: string) => void;
   account?: BankAccount | null;
 }
-
-const bankOptions = ["HDFC Bank", "ICICI Bank", "SBI", "Axis Bank", "Kotak Mahindra", "Yes Bank"];
-const typeOptions = [
-  { value: "savings", label: "Savings Account" },
-  { value: "current", label: "Current Account" },
-  { value: "fd", label: "Fixed Deposit" },
-];
 const colorOptions = [
   { value: "from-blue-500 to-blue-600", label: "Blue" },
   { value: "from-orange-500 to-orange-600", label: "Orange" },
@@ -49,9 +43,23 @@ export default function AccountModal({
   onDelete,
   account,
 }: AccountModalProps) {
+  const { options } = useSettingsOptions();
+  
+  // Create type options from user preferences or allow free-form
+  const typeOptions = useMemo(() => {
+    if (options.accountTypes.length > 0) {
+      return options.accountTypes.map(type => ({
+        value: type.toLowerCase().replace(/\s+/g, '_'),
+        label: type,
+      }));
+    }
+    return [];
+  }, [options.accountTypes]);
+
   const [name, setName] = useState("");
   const [bank, setBank] = useState("");
-  const [type, setType] = useState<"savings" | "current" | "fd">("savings");
+  const [type, setType] = useState<string>("");
+  const [customType, setCustomType] = useState("");
   const [balance, setBalance] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [color, setColor] = useState("from-blue-500 to-blue-600");
@@ -66,13 +74,15 @@ export default function AccountModal({
       setBalance(account.balance.toString());
       setAccountNumber(account.accountNumber);
       setColor(account.color);
+      setCustomType("");
     } else {
       setName("");
       setBank("");
-      setType("savings");
+      setType("");
+      setCustomType("");
       setBalance("");
       setAccountNumber("");
-      setColor("from-blue-500 to-blue-600");
+      setColor("");
     }
   }, [account, isOpen]);
 
@@ -82,13 +92,20 @@ export default function AccountModal({
       return;
     }
 
+    // Use custom type if provided, otherwise use selected type
+    const finalType = customType.trim() || type;
+    if (!finalType) {
+      toast.error("Please select or enter an account type");
+      return;
+    }
+
     const accountData = {
       name,
       bank,
-      type,
+      type: finalType, // Send as string, no type assertion
       balance: parseFloat(balance),
       accountNumber: accountNumber || `XXXX${Math.floor(1000 + Math.random() * 9000)}`,
-      color,
+      color: color || "from-blue-500 to-blue-600",
     };
 
     if (isEditing && onUpdate && account) {
@@ -132,36 +149,52 @@ export default function AccountModal({
 
           {/* Bank */}
           <div className="space-y-2">
-            <Label>Bank</Label>
-            <Select value={bank} onValueChange={setBank}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select bank" />
-              </SelectTrigger>
-              <SelectContent>
-                {bankOptions.map((b) => (
-                  <SelectItem key={b} value={b}>
-                    {b}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="bank">Bank</Label>
+            <Input
+              id="bank"
+              placeholder="e.g., Your Bank Name"
+              value={bank}
+              onChange={(e) => setBank(e.target.value)}
+            />
           </div>
 
           {/* Account Type */}
           <div className="space-y-2">
             <Label>Account Type</Label>
-            <Select value={type} onValueChange={(v) => setType(v as "savings" | "current" | "fd")}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                {typeOptions.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {typeOptions.length > 0 ? (
+              <Select value={type} onValueChange={(v) => {
+                setType(v);
+                setCustomType("");
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {typeOptions.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__custom__">+ Add Custom Type</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                placeholder="e.g., Savings Account, Current Account"
+                value={customType || type}
+                onChange={(e) => {
+                  setCustomType(e.target.value);
+                  setType(e.target.value);
+                }}
+              />
+            )}
+            {type === "__custom__" && (
+              <Input
+                placeholder="Enter account type"
+                value={customType}
+                onChange={(e) => setCustomType(e.target.value)}
+              />
+            )}
           </div>
 
           {/* Balance */}

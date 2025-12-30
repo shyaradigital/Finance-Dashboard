@@ -1,0 +1,83 @@
+import { Router } from "express";
+import { cardsController } from "./cards.controller";
+import { authenticate } from "../middleware/auth";
+import { validate } from "../middleware/validator";
+import {
+  createCreditCardSchema,
+  updateCreditCardSchema,
+  createDebitCardSchema,
+  updateDebitCardSchema,
+} from "./cards.schemas";
+
+const router = Router();
+
+router.use(authenticate);
+
+// Credit Cards
+router.get(
+  "/credit",
+  cardsController.getCreditCards.bind(cardsController)
+);
+
+router.get(
+  "/credit/:id",
+  cardsController.getCreditCardById.bind(cardsController)
+);
+
+router.post(
+  "/credit",
+  validate(createCreditCardSchema),
+  cardsController.createCreditCard.bind(cardsController)
+);
+
+router.put(
+  "/credit/:id",
+  validate(updateCreditCardSchema),
+  cardsController.updateCreditCard.bind(cardsController)
+);
+
+router.delete(
+  "/credit/:id",
+  cardsController.deleteCreditCard.bind(cardsController)
+);
+
+router.get(
+  "/credit/:id/transactions",
+  cardsController.getCreditCardTransactions.bind(cardsController)
+);
+
+router.get(
+  "/credit/:id/utilization",
+  cardsController.getCreditCardUtilization.bind(cardsController)
+);
+
+// Debit Cards
+router.get(
+  "/debit",
+  cardsController.getDebitCards.bind(cardsController)
+);
+
+router.get(
+  "/debit/:id",
+  cardsController.getDebitCardById.bind(cardsController)
+);
+
+router.post(
+  "/debit",
+  validate(createDebitCardSchema),
+  cardsController.createDebitCard.bind(cardsController)
+);
+
+router.put(
+  "/debit/:id",
+  validate(updateDebitCardSchema),
+  cardsController.updateDebitCard.bind(cardsController)
+);
+
+router.delete(
+  "/debit/:id",
+  cardsController.deleteDebitCard.bind(cardsController)
+);
+
+export default router;
+

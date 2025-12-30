@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { SIP } from "@/hooks/useFinanceData";
 import { toast } from "sonner";
+import { useSettingsOptions } from "@/hooks/useSettingsOptions";
 
 interface SIPModalProps {
   isOpen: boolean;
@@ -27,8 +28,6 @@ interface SIPModalProps {
   sip?: SIP | null;
 }
 
-const frequencyOptions = ["Monthly", "Weekly", "Quarterly", "Yearly"];
-
 export default function SIPModal({
   isOpen,
   onClose,
@@ -37,9 +36,21 @@ export default function SIPModal({
   onDelete,
   sip,
 }: SIPModalProps) {
+  const { options } = useSettingsOptions();
+  
+  // Create frequency options from user preferences or use defaults
+  const frequencyOptions = useMemo(() => {
+    if (options.sipFrequencies.length > 0) {
+      return options.sipFrequencies;
+    }
+    // If no user preferences, allow free-form input
+    return [];
+  }, [options.sipFrequencies]);
+
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
-  const [frequency, setFrequency] = useState("Monthly");
+  const [frequency, setFrequency] = useState("");
+  const [customFrequency, setCustomFrequency] = useState("");
   const [nextDate, setNextDate] = useState("");
   const [totalInvested, setTotalInvested] = useState("");
 
@@ -52,10 +63,12 @@ export default function SIPModal({
       setFrequency(sip.frequency);
       setNextDate(sip.nextDate);
       setTotalInvested(sip.totalInvested.toString());
+      setCustomFrequency("");
     } else {
       setName("");
       setAmount("");
-      setFrequency("Monthly");
+      setFrequency("");
+      setCustomFrequency("");
       setNextDate("");
       setTotalInvested("0");
     }
@@ -67,11 +80,18 @@ export default function SIPModal({
       return;
     }
 
+    // Use custom frequency if provided, otherwise use selected frequency
+    const finalFrequency = customFrequency.trim() || frequency;
+    if (!finalFrequency) {
+      toast.error("Please select or enter a frequency");
+      return;
+    }
+
     const sipData = {
       name,
       amount: parseFloat(amount),
-      frequency,
-      nextDate: nextDate || "Jan 5",
+      frequency: finalFrequency,
+      nextDate: nextDate || "",
       totalInvested: parseFloat(totalInvested) || 0,
     };
 
@@ -135,18 +155,40 @@ export default function SIPModal({
           {/* Frequency */}
           <div className="space-y-2">
             <Label>Frequency</Label>
-            <Select value={frequency} onValueChange={setFrequency}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select frequency" />
-              </SelectTrigger>
-              <SelectContent>
-                {frequencyOptions.map((f) => (
-                  <SelectItem key={f} value={f}>
-                    {f}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {frequencyOptions.length > 0 ? (
+              <Select value={frequency} onValueChange={(v) => {
+                setFrequency(v);
+                setCustomFrequency("");
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select frequency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {frequencyOptions.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      {f}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__custom__">+ Add Custom Frequency</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                placeholder="e.g., Monthly, Weekly, Quarterly"
+                value={customFrequency || frequency}
+                onChange={(e) => {
+                  setCustomFrequency(e.target.value);
+                  setFrequency(e.target.value);
+                }}
+              />
+            )}
+            {frequency === "__custom__" && (
+              <Input
+                placeholder="Enter frequency"
+                value={customFrequency}
+                onChange={(e) => setCustomFrequency(e.target.value)}
+              />
+            )}
           </div>
 
           {/* Next Debit Date */}

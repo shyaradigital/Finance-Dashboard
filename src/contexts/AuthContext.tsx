@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import api, { setTokens, clearTokens, getAccessToken } from "@/services/api";
 
 interface User {
   id: string;
@@ -29,48 +31,102 @@ const MASTER_PASSWORD = "1234"; // Demo master password for vault actions
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Get queryClient - must be called unconditionally at top level
+  // QueryClientProvider wraps AuthProvider in App.tsx, so this should work
+  const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Check for existing session
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setUser(parsed.user);
-      } catch (e) {
-        localStorage.removeItem(STORAGE_KEY);
+    // Check for existing session - try to get user from API
+    const checkAuth = async () => {
+      const token = getAccessToken();
+      if (token) {
+        try {
+          const response = await api.auth.getMe();
+          if (response.success && response.data) {
+            setUser(response.data);
+          } else {
+            // Only clear tokens if it's an auth error (401), not rate limit (429)
+            // Rate limit errors will be handled by retry logic
+            // If it's a rate limit, keep the token and preserve any existing user state
+            // The API service will retry automatically
+            const isRateLimit = response.error && 
+              (response.error.includes('Too many requests') || 
+               response.error.includes('rate limit'));
+            
+            if (!isRateLimit) {
+              // Only clear tokens for non-rate-limit errors
+              clearTokens();
+              setUser(null);
+            }
+            // If rate limited, keep token and user state - let retry logic handle it
+          }
+        } catch (error) {
+          // Only clear tokens on network errors, not rate limits
+          // Rate limits are handled by retry logic in API service
+          const isRateLimit = error instanceof Error && 
+            (error.message.includes('Too many requests') || 
+             error.message.includes('rate limit'));
+          
+          if (!isRateLimit) {
+            clearTokens();
+            setUser(null);
+          }
+          // If rate limited, keep token and user state - let retry logic handle it
+        }
+      } else {
+        // No token, ensure user is null
+        setUser(null);
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+
+    checkAuth();
+
+    // Listen for custom event when tokens are cleared by API service
+    const handleTokensCleared = () => {
+      setUser(null);
+    };
+
+    window.addEventListener('tokensCleared', handleTokensCleared);
+
+    return () => {
+      window.removeEventListener('tokensCleared', handleTokensCleared);
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
     if (!email || !password) {
       return { success: false, error: "Please enter email and password" };
     }
 
-    if (password.length < 4) {
-      return { success: false, error: "Invalid credentials" };
+    try {
+      const response = await api.auth.login(email, password);
+      
+      if (response.success && response.data) {
+        // Store tokens
+        if (response.data.accessToken && response.data.refreshToken) {
+          setTokens(response.data.accessToken, response.data.refreshToken);
+        }
+        
+        // Set user
+        if (response.data.user) {
+          setUser(response.data.user);
+        }
+        
+        return { success: true };
+      } else {
+        return { success: false, error: response.error || "Login failed" };
+      }
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : "Login failed. Please try again." 
+      };
     }
-
-    const newUser: User = {
-      id: "user_" + Math.random().toString(36).substr(2, 9),
-      name: email.split("@")[0],
-      email,
-      memberSince: new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" }),
-    };
-
-    setUser(newUser);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: newUser }));
-    return { success: true };
   };
 
   const signup = async (name: string, email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    await new Promise(resolve => setTimeout(resolve, 800));
-
     if (!name || !email || !password) {
       return { success: false, error: "Please fill in all fields" };
     }
@@ -84,34 +140,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: "Please enter a valid email address" };
     }
 
-    const newUser: User = {
-      id: "user_" + Math.random().toString(36).substr(2, 9),
-      name,
-      email,
-      memberSince: new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" }),
-    };
-
-    setUser(newUser);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: newUser }));
-    return { success: true };
+    try {
+      const response = await api.auth.signup(name, email, password);
+      
+      if (response.success && response.data) {
+        // Store tokens
+        if (response.data.accessToken && response.data.refreshToken) {
+          setTokens(response.data.accessToken, response.data.refreshToken);
+        }
+        
+        // Set user
+        if (response.data.user) {
+          setUser(response.data.user);
+        }
+        
+        return { success: true };
+      } else {
+        return { success: false, error: response.error || "Signup failed" };
+      }
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : "Signup failed. Please try again." 
+      };
+    }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem(STORAGE_KEY);
+  const logout = async () => {
+    try {
+      await api.auth.logout();
+    } catch (error) {
+      // Continue with logout even if API call fails
+      console.error("Logout error:", error);
+    } finally {
+      setUser(null);
+      clearTokens();
+      // Clear all localStorage data
+      localStorage.removeItem('financeflow_setup_dismissed');
+      // Clear React Query cache to remove all cached data
+      queryClient.clear();
+    }
   };
 
   const updateUser = (updates: Partial<User>) => {
     if (user) {
+      // Update locally immediately for better UX
       const updatedUser = { ...user, ...updates };
       setUser(updatedUser);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: updatedUser }));
+      
+      // Sync with backend in background
+      api.auth.updateProfile(updates).then((response) => {
+        if (response.success && response.data) {
+          setUser(response.data);
+        }
+      }).catch(() => {
+        // Keep local update if API fails
+      });
     }
   };
 
   const changePassword = async (currentPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-
     if (!currentPassword || !newPassword) {
       return { success: false, error: "Please fill in all fields" };
     }
@@ -120,30 +208,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: "New password must be at least 6 characters" };
     }
 
-    // Simulate password change
-    return { success: true };
+    try {
+      const response = await api.auth.changePassword(currentPassword, newPassword);
+      return { 
+        success: response.success, 
+        error: response.error 
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : "Failed to change password" 
+      };
+    }
   };
 
   const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-
     if (!email) {
       return { success: false, error: "Please enter your email" };
     }
 
-    // Simulate password reset email
-    return { success: true };
+    try {
+      const response = await api.auth.resetPassword(email);
+      return { 
+        success: response.success, 
+        error: response.error 
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : "Failed to send reset email" 
+      };
+    }
   };
 
   const verifyMasterPassword = (password: string): boolean => {
     return password === MASTER_PASSWORD;
   };
 
+  // Consider user authenticated if they have a token OR if user data is loaded
+  // This prevents logout on rate-limited auth checks
+  const isAuthenticated = !!user || (!!getAccessToken() && !isLoading);
+
   return (
     <AuthContext.Provider
       value={{
         user,
-        isAuthenticated: !!user,
+        isAuthenticated,
         isLoading,
         login,
         signup,

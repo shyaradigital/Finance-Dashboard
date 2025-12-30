@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { DebitCardType } from "@/hooks/useFinanceData";
 import { toast } from "sonner";
+import { useSettingsOptions } from "@/hooks/useSettingsOptions";
 
 interface DebitCardModalProps {
   isOpen: boolean;
@@ -28,9 +29,6 @@ interface DebitCardModalProps {
   card?: DebitCardType | null;
   bankAccounts?: { name: string }[];
 }
-
-const bankOptions = ["HDFC", "ICICI", "SBI", "Axis", "Kotak", "Yes Bank"];
-const networkOptions: ("Visa" | "Mastercard" | "RuPay")[] = ["Visa", "Mastercard", "RuPay"];
 const colorOptions = [
   { value: "from-blue-500 to-blue-600", label: "Blue" },
   { value: "from-orange-500 to-orange-600", label: "Orange" },
@@ -48,11 +46,22 @@ export default function DebitCardModal({
   card,
   bankAccounts = [],
 }: DebitCardModalProps) {
+  const { options } = useSettingsOptions();
+  
+  // Create network options from user preferences or allow free-form
+  const networkOptions = useMemo(() => {
+    if (options.cardNetworks.length > 0) {
+      return options.cardNetworks;
+    }
+    return [];
+  }, [options.cardNetworks]);
+
   const [name, setName] = useState("");
   const [bank, setBank] = useState("");
   const [lastFour, setLastFour] = useState("");
   const [linkedAccount, setLinkedAccount] = useState("");
-  const [cardNetwork, setCardNetwork] = useState<"Visa" | "Mastercard" | "RuPay">("Visa");
+  const [cardNetwork, setCardNetwork] = useState<string>("");
+  const [customNetwork, setCustomNetwork] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [color, setColor] = useState("from-blue-500 to-blue-600");
@@ -69,15 +78,17 @@ export default function DebitCardModal({
       setExpiryDate(card.expiryDate);
       setIsActive(card.isActive);
       setColor(card.color);
+      setCustomNetwork("");
     } else {
       setName("");
       setBank("");
       setLastFour("");
       setLinkedAccount("");
-      setCardNetwork("Visa");
+      setCardNetwork("");
+      setCustomNetwork("");
       setExpiryDate("");
       setIsActive(true);
-      setColor("from-blue-500 to-blue-600");
+      setColor("");
     }
   }, [card, isOpen]);
 
@@ -87,15 +98,22 @@ export default function DebitCardModal({
       return;
     }
 
+    // Use custom network if provided, otherwise use selected network
+    const finalNetwork = customNetwork.trim() || cardNetwork;
+    if (!finalNetwork) {
+      toast.error("Please select or enter a card network");
+      return;
+    }
+
     const cardData: Omit<DebitCardType, "id"> = {
       name,
       bank,
       lastFour: lastFour || Math.floor(1000 + Math.random() * 9000).toString(),
-      linkedAccount: linkedAccount || "Primary Account",
-      cardNetwork,
-      expiryDate: expiryDate || "12/27",
+      linkedAccount: linkedAccount || "",
+      cardNetwork: finalNetwork as "Visa" | "Mastercard" | "RuPay",
+      expiryDate: expiryDate || "",
       isActive,
-      color,
+      color: color || "from-blue-500 to-blue-600",
     };
 
     if (isEditing && onUpdate && card) {
@@ -139,19 +157,13 @@ export default function DebitCardModal({
 
           {/* Bank */}
           <div className="space-y-2">
-            <Label>Bank</Label>
-            <Select value={bank} onValueChange={setBank}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select bank" />
-              </SelectTrigger>
-              <SelectContent>
-                {bankOptions.map((b) => (
-                  <SelectItem key={b} value={b}>
-                    {b}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="bank">Bank</Label>
+            <Input
+              id="bank"
+              placeholder="e.g., Your Bank Name"
+              value={bank}
+              onChange={(e) => setBank(e.target.value)}
+            />
           </div>
 
           {/* Last 4 Digits */}
@@ -169,18 +181,40 @@ export default function DebitCardModal({
           {/* Card Network */}
           <div className="space-y-2">
             <Label>Card Network</Label>
-            <Select value={cardNetwork} onValueChange={(v) => setCardNetwork(v as typeof cardNetwork)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select network" />
-              </SelectTrigger>
-              <SelectContent>
-                {networkOptions.map((n) => (
-                  <SelectItem key={n} value={n}>
-                    {n}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {networkOptions.length > 0 ? (
+              <Select value={cardNetwork} onValueChange={(v) => {
+                setCardNetwork(v);
+                setCustomNetwork("");
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select network" />
+                </SelectTrigger>
+                <SelectContent>
+                  {networkOptions.map((n) => (
+                    <SelectItem key={n} value={n}>
+                      {n}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__custom__">+ Add Custom Network</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                placeholder="e.g., Visa, Mastercard, RuPay"
+                value={customNetwork || cardNetwork}
+                onChange={(e) => {
+                  setCustomNetwork(e.target.value);
+                  setCardNetwork(e.target.value);
+                }}
+              />
+            )}
+            {cardNetwork === "__custom__" && (
+              <Input
+                placeholder="Enter card network"
+                value={customNetwork}
+                onChange={(e) => setCustomNetwork(e.target.value)}
+              />
+            )}
           </div>
 
           {/* Linked Account */}

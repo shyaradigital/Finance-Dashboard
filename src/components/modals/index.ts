@@ -9,5 +9,6 @@ export { default as SIPModal } from "./SIPModal";
 export { default as CategoryModal } from "./CategoryModal";
 export { default as AutomationRuleModal } from "./AutomationRuleModal";
 export { default as InsightDetailModal } from "./InsightDetailModal";
+export { default as DeleteAccountModal } from "./DeleteAccountModal";
 export { default as CommitmentModal } from "./CommitmentModal";
 export { default as PasswordVerifyModal } from "./PasswordVerifyModal";

@@ -8,13 +8,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { CreditCardType } from "@/hooks/useFinanceData";
 import { toast } from "sonner";
 
@@ -27,7 +20,6 @@ interface CreditCardModalProps {
   card?: CreditCardType | null;
 }
 
-const bankOptions = ["HDFC", "ICICI", "SBI", "Axis", "Kotak", "Amex"];
 const colorOptions = [
   { value: "from-purple-500 to-purple-600", label: "Purple" },
   { value: "from-yellow-500 to-orange-500", label: "Gold" },
@@ -49,8 +41,8 @@ export default function CreditCardModal({
   const [lastFour, setLastFour] = useState("");
   const [limit, setLimit] = useState("");
   const [used, setUsed] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [color, setColor] = useState("from-purple-500 to-purple-600");
+  const [dueDate, setDueDate] = useState(""); // Day of month (1-31) as string for input
+  const [color, setColor] = useState("");
 
   const isEditing = !!card;
 
@@ -61,27 +53,37 @@ export default function CreditCardModal({
       setLastFour(card.lastFour);
       setLimit(card.limit.toString());
       setUsed(card.used.toString());
-      setDueDate(card.dueDate);
+      // Extract day number from formatted date string (e.g., "Jan 15" -> "15")
+      // Or if it's already a number string, use it directly
+      const dayMatch = card.dueDate.match(/\d+/);
+      setDueDate(dayMatch ? dayMatch[0] : "");
       setColor(card.color);
     } else {
       setName("");
       setBank("");
       setLastFour("");
       setLimit("");
-      setUsed("0");
+      setUsed("");
       setDueDate("");
-      setColor("from-purple-500 to-purple-600");
+      setColor("");
     }
   }, [card, isOpen]);
 
   const handleSave = () => {
-    if (!name || !bank || !limit) {
+    if (!name || !bank || !limit || !dueDate) {
       toast.error("Please fill in all required fields");
       return;
     }
 
     const usedAmount = parseFloat(used) || 0;
     const limitAmount = parseFloat(limit);
+    const dueDateNum = parseInt(dueDate, 10);
+
+    // Validate due date is between 1-31
+    if (isNaN(dueDateNum) || dueDateNum < 1 || dueDateNum > 31) {
+      toast.error("Due date must be a number between 1 and 31");
+      return;
+    }
 
     const cardData = {
       name,
@@ -89,9 +91,9 @@ export default function CreditCardModal({
       lastFour: lastFour || Math.floor(1000 + Math.random() * 9000).toString(),
       limit: limitAmount,
       used: usedAmount,
-      dueDate: dueDate || "Jan 15",
+      dueDate: dueDateNum, // Send as number (1-31) to backend
       minDue: Math.round(usedAmount * 0.1),
-      color,
+      color: color || "from-purple-500 to-purple-600",
     };
 
     if (isEditing && onUpdate && card) {
@@ -135,19 +137,13 @@ export default function CreditCardModal({
 
           {/* Bank */}
           <div className="space-y-2">
-            <Label>Bank / Issuer</Label>
-            <Select value={bank} onValueChange={setBank}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select bank" />
-              </SelectTrigger>
-              <SelectContent>
-                {bankOptions.map((b) => (
-                  <SelectItem key={b} value={b}>
-                    {b}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="bank">Bank / Issuer</Label>
+            <Input
+              id="bank"
+              placeholder="e.g., Your Bank Name"
+              value={bank}
+              onChange={(e) => setBank(e.target.value)}
+            />
           </div>
 
           {/* Last 4 Digits */}
@@ -200,13 +196,25 @@ export default function CreditCardModal({
 
           {/* Due Date */}
           <div className="space-y-2">
-            <Label htmlFor="dueDate">Bill Due Date</Label>
+            <Label htmlFor="dueDate">Bill Due Date (Day of Month)</Label>
             <Input
               id="dueDate"
-              placeholder="e.g., Jan 15"
+              type="number"
+              min="1"
+              max="31"
+              placeholder="e.g., 15 (for 15th of every month)"
               value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Only allow numbers 1-31
+                if (value === "" || (parseInt(value, 10) >= 1 && parseInt(value, 10) <= 31)) {
+                  setDueDate(value);
+                }
+              }}
             />
+            <p className="text-xs text-muted-foreground">
+              Enter the day of the month when your credit card bill is due (1-31)
+            </p>
           </div>
 
           {/* Color */}

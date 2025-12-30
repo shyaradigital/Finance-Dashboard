@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -17,36 +17,8 @@ import {
 } from "@/components/ui/select";
 import { BudgetCategory } from "@/hooks/useFinanceData";
 import { toast } from "sonner";
-import { 
-  Home, 
-  Utensils, 
-  ShoppingBag, 
-  Car, 
-  Gamepad2, 
-  Wifi, 
-  Heart, 
-  GraduationCap 
-} from "lucide-react";
-
-interface BudgetModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (budget: Omit<BudgetCategory, "id">) => void;
-  onUpdate?: (id: string, budget: Partial<BudgetCategory>) => void;
-  onDelete?: (id: string) => void;
-  budget?: BudgetCategory | null;
-}
-
-const categoryOptions = [
-  { name: "Housing", icon: Home, color: "bg-primary" },
-  { name: "Food & Dining", icon: Utensils, color: "bg-accent" },
-  { name: "Shopping", icon: ShoppingBag, color: "bg-destructive" },
-  { name: "Transport", icon: Car, color: "bg-success" },
-  { name: "Entertainment", icon: Gamepad2, color: "bg-warning" },
-  { name: "Utilities", icon: Wifi, color: "bg-primary" },
-  { name: "Health", icon: Heart, color: "bg-success" },
-  { name: "Education", icon: GraduationCap, color: "bg-accent" },
-];
+import { useCategories } from "@/hooks/useFinanceQueries";
+import { categoryIcons } from "@/hooks/useFinanceData";
 
 export default function BudgetModal({
   isOpen,
@@ -56,6 +28,13 @@ export default function BudgetModal({
   onDelete,
   budget,
 }: BudgetModalProps) {
+  const { categories: allCategories } = useCategories();
+  
+  // Filter only expense categories for budgets
+  const expenseCategories = useMemo(() => {
+    return allCategories.filter(cat => cat.type === "expense");
+  }, [allCategories]);
+
   const [name, setName] = useState("");
   const [budgetAmount, setBudgetAmount] = useState("");
   const [spent, setSpent] = useState("0");
@@ -80,13 +59,17 @@ export default function BudgetModal({
       return;
     }
 
-    const selectedCategory = categoryOptions.find(c => c.name === name);
+    // Find the selected category to get its icon and color
+    const selectedCategory = expenseCategories.find(c => c.name === name);
+    const CategoryIcon = selectedCategory 
+      ? (categoryIcons[selectedCategory.name.toLowerCase()] || categoryIcons.default)
+      : categoryIcons.default;
     
     const budgetData = {
       name,
       budget: parseFloat(budgetAmount),
       spent: parseFloat(spent),
-      icon: selectedCategory?.icon || Home,
+      icon: CategoryIcon,
       color: selectedCategory?.color || "bg-primary",
     };
 
@@ -121,21 +104,37 @@ export default function BudgetModal({
           {/* Category */}
           <div className="space-y-2">
             <Label>Category</Label>
-            <Select value={name} onValueChange={setName}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {categoryOptions.map((cat) => (
-                  <SelectItem key={cat.name} value={cat.name}>
-                    <div className="flex items-center gap-2">
-                      <cat.icon className="h-4 w-4" />
-                      {cat.name}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {expenseCategories.length === 0 ? (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  No expense categories found. Please create categories in Settings first.
+                </p>
+                <Input
+                  placeholder="Enter category name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+            ) : (
+              <Select value={name} onValueChange={setName}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {expenseCategories.map((cat) => {
+                    const Icon = categoryIcons[cat.name.toLowerCase()] || categoryIcons.default;
+                    return (
+                      <SelectItem key={cat.id} value={cat.name}>
+                        <div className="flex items-center gap-2">
+                          <Icon className="h-4 w-4" />
+                          {cat.name}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* Monthly Budget */}

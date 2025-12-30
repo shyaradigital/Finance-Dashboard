@@ -35,6 +35,99 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  // Validation errors
+  const [errors, setErrors] = useState<{
+    name?: string;
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+  }>({});
+
+  // Validation functions
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validateName = (name: string): boolean => {
+    return name.trim().length >= 2 && /^[a-zA-Z\s]+$/.test(name.trim());
+  };
+
+  const validatePassword = (password: string): { valid: boolean; message?: string } => {
+    if (password.length < 6) {
+      return { valid: false, message: "Password must be at least 6 characters" };
+    }
+    return { valid: true };
+  };
+
+  // Real-time validation
+  const validateSignIn = (): boolean => {
+    const newErrors: typeof errors = {};
+    let isValid = true;
+
+    if (!email) {
+      newErrors.email = "Email is required";
+      isValid = false;
+    } else if (!validateEmail(email)) {
+      newErrors.email = "Please enter a valid email address";
+      isValid = false;
+    }
+
+    if (!password) {
+      newErrors.password = "Password is required";
+      isValid = false;
+    } else if (password.length < 4) {
+      newErrors.password = "Password must be at least 4 characters";
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
+  const validateSignUp = (): boolean => {
+    const newErrors: typeof errors = {};
+    let isValid = true;
+
+    if (!name) {
+      newErrors.name = "Name is required";
+      isValid = false;
+    } else if (!validateName(name)) {
+      newErrors.name = "Name must be at least 2 characters and contain only letters";
+      isValid = false;
+    }
+
+    if (!email) {
+      newErrors.email = "Email is required";
+      isValid = false;
+    } else if (!validateEmail(email)) {
+      newErrors.email = "Please enter a valid email address";
+      isValid = false;
+    }
+
+    if (!password) {
+      newErrors.password = "Password is required";
+      isValid = false;
+    } else {
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.valid) {
+        newErrors.password = passwordValidation.message;
+        isValid = false;
+      }
+    }
+
+    if (!confirmPassword) {
+      newErrors.confirmPassword = "Please confirm your password";
+      isValid = false;
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
   // Redirect if already authenticated
   if (isAuthenticated) {
     navigate("/");
@@ -43,6 +136,11 @@ export default function Auth() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateSignIn()) {
+      return;
+    }
+
     setIsLoading(true);
 
     const result = await login(email, password);
@@ -60,8 +158,7 @@ export default function Auth() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
+    if (!validateSignUp()) {
       return;
     }
 
@@ -184,7 +281,15 @@ export default function Auth() {
                   </Button>
                 </form>
               ) : (
-                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "signin" | "signup")}>
+                <Tabs value={activeTab} onValueChange={(v) => {
+                  setActiveTab(v as "signin" | "signup");
+                  // Clear errors when switching tabs
+                  setErrors({});
+                  setName("");
+                  setEmail("");
+                  setPassword("");
+                  setConfirmPassword("");
+                }}>
                   <TabsList className="grid w-full grid-cols-2 mb-8 bg-muted">
                     <TabsTrigger value="signin" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                       Sign In
@@ -210,11 +315,24 @@ export default function Auth() {
                             type="email"
                             placeholder="you@example.com"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="pl-10"
+                            onChange={(e) => {
+                              setEmail(e.target.value);
+                              if (errors.email) {
+                                setErrors({ ...errors, email: undefined });
+                              }
+                            }}
+                            onBlur={() => {
+                              if (email && !validateEmail(email)) {
+                                setErrors({ ...errors, email: "Please enter a valid email address" });
+                              }
+                            }}
+                            className={cn("pl-10", errors.email && "border-destructive")}
                             required
                           />
                         </div>
+                        {errors.email && (
+                          <p className="text-xs text-destructive">{errors.email}</p>
+                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -236,8 +354,13 @@ export default function Auth() {
                             type={showPassword ? "text" : "password"}
                             placeholder="••••••••"
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="pl-10 pr-10"
+                            onChange={(e) => {
+                              setPassword(e.target.value);
+                              if (errors.password) {
+                                setErrors({ ...errors, password: undefined });
+                              }
+                            }}
+                            className={cn("pl-10 pr-10", errors.password && "border-destructive")}
                             required
                           />
                           <Button
@@ -250,9 +373,17 @@ export default function Auth() {
                             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </Button>
                         </div>
+                        {errors.password && (
+                          <p className="text-xs text-destructive">{errors.password}</p>
+                        )}
                       </div>
 
-                      <Button type="submit" variant="gradient" className="w-full" disabled={isLoading}>
+                      <Button 
+                        type="submit" 
+                        variant="gradient" 
+                        className="w-full" 
+                        disabled={isLoading || !email || !password}
+                      >
                         {isLoading ? (
                           <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         ) : (
@@ -316,11 +447,24 @@ export default function Auth() {
                             type="text"
                             placeholder="John Doe"
                             value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="pl-10"
+                            onChange={(e) => {
+                              setName(e.target.value);
+                              if (errors.name) {
+                                setErrors({ ...errors, name: undefined });
+                              }
+                            }}
+                            onBlur={() => {
+                              if (name && !validateName(name)) {
+                                setErrors({ ...errors, name: "Name must be at least 2 characters and contain only letters" });
+                              }
+                            }}
+                            className={cn("pl-10", errors.name && "border-destructive")}
                             required
                           />
                         </div>
+                        {errors.name && (
+                          <p className="text-xs text-destructive">{errors.name}</p>
+                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -332,11 +476,24 @@ export default function Auth() {
                             type="email"
                             placeholder="you@example.com"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="pl-10"
+                            onChange={(e) => {
+                              setEmail(e.target.value);
+                              if (errors.email) {
+                                setErrors({ ...errors, email: undefined });
+                              }
+                            }}
+                            onBlur={() => {
+                              if (email && !validateEmail(email)) {
+                                setErrors({ ...errors, email: "Please enter a valid email address" });
+                              }
+                            }}
+                            className={cn("pl-10", errors.email && "border-destructive")}
                             required
                           />
                         </div>
+                        {errors.email && (
+                          <p className="text-xs text-destructive">{errors.email}</p>
+                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -348,8 +505,25 @@ export default function Auth() {
                             type={showPassword ? "text" : "password"}
                             placeholder="••••••••"
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="pl-10 pr-10"
+                            onChange={(e) => {
+                              setPassword(e.target.value);
+                              if (errors.password) {
+                                setErrors({ ...errors, password: undefined });
+                              }
+                              // Clear confirm password error if passwords now match
+                              if (confirmPassword && e.target.value === confirmPassword && errors.confirmPassword) {
+                                setErrors({ ...errors, confirmPassword: undefined });
+                              }
+                            }}
+                            onBlur={() => {
+                              if (password) {
+                                const validation = validatePassword(password);
+                                if (!validation.valid) {
+                                  setErrors({ ...errors, password: validation.message });
+                                }
+                              }
+                            }}
+                            className={cn("pl-10 pr-10", errors.password && "border-destructive")}
                             required
                           />
                           <Button
@@ -362,7 +536,11 @@ export default function Auth() {
                             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </Button>
                         </div>
-                        <p className="text-xs text-muted-foreground">Minimum 6 characters</p>
+                        {errors.password ? (
+                          <p className="text-xs text-destructive">{errors.password}</p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">Minimum 6 characters</p>
+                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -374,14 +552,33 @@ export default function Auth() {
                             type={showPassword ? "text" : "password"}
                             placeholder="••••••••"
                             value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="pl-10"
+                            onChange={(e) => {
+                              setConfirmPassword(e.target.value);
+                              if (errors.confirmPassword) {
+                                setErrors({ ...errors, confirmPassword: undefined });
+                              }
+                              // Real-time match check
+                              if (e.target.value && password && e.target.value !== password) {
+                                setErrors({ ...errors, confirmPassword: "Passwords do not match" });
+                              } else if (e.target.value && password && e.target.value === password) {
+                                setErrors({ ...errors, confirmPassword: undefined });
+                              }
+                            }}
+                            className={cn("pl-10", errors.confirmPassword && "border-destructive")}
                             required
                           />
                         </div>
+                        {errors.confirmPassword && (
+                          <p className="text-xs text-destructive">{errors.confirmPassword}</p>
+                        )}
                       </div>
 
-                      <Button type="submit" variant="gradient" className="w-full" disabled={isLoading}>
+                      <Button 
+                        type="submit" 
+                        variant="gradient" 
+                        className="w-full" 
+                        disabled={isLoading || !name || !email || !password || !confirmPassword || !!errors.name || !!errors.email || !!errors.password || !!errors.confirmPassword}
+                      >
                         {isLoading ? (
                           <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         ) : (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { UpcomingCommitment } from "@/hooks/useFinanceData";
 import { toast } from "sonner";
+import { useSettingsOptions } from "@/hooks/useSettingsOptions";
 
 interface CommitmentModalProps {
   isOpen: boolean;
@@ -27,12 +28,6 @@ interface CommitmentModalProps {
   commitment?: UpcomingCommitment | null;
 }
 
-const typeOptions = [
-  { value: "bill", label: "Bill" },
-  { value: "subscription", label: "Subscription" },
-  { value: "loan", label: "Loan / EMI" },
-];
-
 export default function CommitmentModal({
   isOpen,
   onClose,
@@ -41,10 +36,24 @@ export default function CommitmentModal({
   onDelete,
   commitment,
 }: CommitmentModalProps) {
+  const { options } = useSettingsOptions();
+  
+  // Create type options from user preferences or allow free-form
+  const typeOptions = useMemo(() => {
+    if (options.commitmentTypes.length > 0) {
+      return options.commitmentTypes.map(type => ({
+        value: type.toLowerCase().replace(/\s+/g, '_'),
+        label: type,
+      }));
+    }
+    return [];
+  }, [options.commitmentTypes]);
+
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [dueDate, setDueDate] = useState("");
-  const [type, setType] = useState<"bill" | "subscription" | "loan">("bill");
+  const [type, setType] = useState<string>("");
+  const [customType, setCustomType] = useState("");
 
   const isEditing = !!commitment;
 
@@ -54,11 +63,13 @@ export default function CommitmentModal({
       setAmount(commitment.amount.toString());
       setDueDate(commitment.dueDate);
       setType(commitment.type);
+      setCustomType("");
     } else {
       setName("");
       setAmount("");
       setDueDate("");
-      setType("bill");
+      setType("");
+      setCustomType("");
     }
   }, [commitment, isOpen]);
 
@@ -68,11 +79,18 @@ export default function CommitmentModal({
       return;
     }
 
+    // Use custom type if provided, otherwise use selected type
+    const finalType = customType.trim() || type;
+    if (!finalType) {
+      toast.error("Please select or enter a commitment type");
+      return;
+    }
+
     const commitmentData = {
       name,
       amount: parseFloat(amount),
       dueDate,
-      type,
+      type: finalType as "bill" | "subscription" | "loan",
     };
 
     if (isEditing && onUpdate && commitment) {
@@ -117,18 +135,40 @@ export default function CommitmentModal({
           {/* Type */}
           <div className="space-y-2">
             <Label>Type</Label>
-            <Select value={type} onValueChange={(v) => setType(v as "bill" | "subscription" | "loan")}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                {typeOptions.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {typeOptions.length > 0 ? (
+              <Select value={type} onValueChange={(v) => {
+                setType(v);
+                setCustomType("");
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {typeOptions.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__custom__">+ Add Custom Type</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                placeholder="e.g., Bill, Subscription, Loan"
+                value={customType || type}
+                onChange={(e) => {
+                  setCustomType(e.target.value);
+                  setType(e.target.value);
+                }}
+              />
+            )}
+            {type === "__custom__" && (
+              <Input
+                placeholder="Enter commitment type"
+                value={customType}
+                onChange={(e) => setCustomType(e.target.value)}
+              />
+            )}
           </div>
 
           {/* Amount */}

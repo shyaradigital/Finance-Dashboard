@@ -1,0 +1,333 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String    @id @default(uuid())
+  email       String    @unique
+  name        String
+  passwordHash String   @map("password_hash")
+  avatar      String?
+  memberSince DateTime  @default(now()) @map("member_since")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  categories           Category[]
+  accounts             Account[]
+  creditCards          CreditCard[]
+  debitCards           DebitCard[]
+  transactions         Transaction[]
+  recurringTransactions RecurringTransaction[]
+  budgets              Budget[]
+  commitments          Commitment[]
+  investments          Investment[]
+  sips                 SIP[]
+  vaultItems           VaultItem[]
+  automationRules      AutomationRule[]
+  settings             Settings?
+  refreshTokens        RefreshToken[]
+
+  @@map("users")
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  name      String
+  type      String   // "income" or "expense"
+  color     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions        Transaction[]
+  recurringTransactions RecurringTransaction[]
+  budgets             Budget[]
+
+  @@index([userId])
+  @@index([userId, type])
+  @@map("categories")
+}
+
+model Account {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  name          String
+  bank          String
+  type          String   // "savings", "current", "fd"
+  balance       Decimal  @default(0) @db.Decimal(15, 2)
+  accountNumber String   @map("account_number")
+  color         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[] @relation("AccountTransactions")
+  debitCards  DebitCard[]
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+model CreditCard {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  name            String
+  bank            String
+  lastFour        String   @map("last_four")
+  limit           Decimal  @db.Decimal(15, 2)
+  used            Decimal  @default(0) @db.Decimal(15, 2)
+  dueDate         Int      @map("due_date") // Day of month (1-31)
+  minDue          Decimal? @map("min_due") @db.Decimal(15, 2)
+  billingCycleStart Int?   @map("billing_cycle_start") // Day of month
+  color           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[] @relation("CreditCardTransactions")
+
+  @@index([userId])
+  @@map("credit_cards")
+}
+
+model DebitCard {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  name         String
+  bank         String
+  lastFour     String   @map("last_four")
+  linkedAccountId String @map("linked_account_id")
+  cardNetwork  String   @map("card_network") // "Visa", "Mastercard", "RuPay"
+  expiryDate   String   @map("expiry_date") // "MM/YY"
+  isActive     Boolean  @default(true) @map("is_active")
+  color        String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  linkedAccount Account @relation(fields: [linkedAccountId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([linkedAccountId])
+  @@map("debit_cards")
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  type        String   // "income" or "expense"
+  categoryId  String?  @map("category_id")
+  description String
+  amount      Decimal  @db.Decimal(15, 2)
+  date        DateTime
+  accountId   String?  @map("account_id")
+  creditCardId String? @map("credit_card_id")
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  account     Account?      @relation("AccountTransactions", fields: [accountId], references: [id], onDelete: SetNull)
+  creditCard  CreditCard?   @relation("CreditCardTransactions", fields: [creditCardId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([userId, date])
+  @@index([userId, type])
+  @@index([categoryId])
+  @@index([accountId])
+  @@index([creditCardId])
+  @@map("transactions")
+}
+
+model RecurringTransaction {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  type        String   // "income" or "expense"
+  categoryId  String?  @map("category_id")
+  description String
+  amount      Decimal  @db.Decimal(15, 2)
+  frequency   String   // "monthly", "quarterly", "yearly", "custom"
+  customDays  Int?     @map("custom_days") // For custom frequency
+  startDate   DateTime @map("start_date")
+  nextDate    DateTime @map("next_date")
+  accountId   String?  @map("account_id")
+  creditCardId String? @map("credit_card_id")
+  notes       String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([userId, isActive])
+  @@index([nextDate])
+  @@map("recurring_transactions")
+}
+
+model Budget {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  categoryId    String   @map("category_id")
+  monthlyLimit  Decimal  @map("monthly_limit") @db.Decimal(15, 2)
+  alertThreshold Decimal? @map("alert_threshold") @db.Decimal(5, 2) // Percentage (e.g., 80.00)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId])
+  @@index([userId])
+  @@map("budgets")
+}
+
+model Commitment {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  name        String
+  amount      Decimal  @db.Decimal(15, 2)
+  dueDate     DateTime @map("due_date")
+  type        String   // "bill", "subscription", "loan"
+  isRecurring Boolean  @default(false) @map("is_recurring")
+  frequency   String?  // "monthly", "quarterly", "yearly"
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, dueDate])
+  @@index([dueDate])
+  @@map("commitments")
+}
+
+model Investment {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  name        String
+  type        String   // "mutual_fund", "stock", "ppf", "nps"
+  invested    Decimal  @db.Decimal(15, 2)
+  currentValue Decimal @map("current_value") @db.Decimal(15, 2)
+  purchaseDate DateTime? @map("purchase_date")
+  color       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sips SIP[]
+
+  @@index([userId])
+  @@map("investments")
+}
+
+model SIP {
+  id           String     @id @default(uuid())
+  userId       String     @map("user_id")
+  investmentId String?    @map("investment_id")
+  name         String
+  amount       Decimal    @db.Decimal(15, 2)
+  frequency    String     // "monthly", "quarterly", "yearly"
+  startDate    DateTime   @map("start_date")
+  nextDate     DateTime   @map("next_date")
+  totalInvested Decimal   @default(0) @map("total_invested") @db.Decimal(15, 2)
+  isActive     Boolean    @default(true) @map("is_active")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investment Investment? @relation(fields: [investmentId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([userId, isActive])
+  @@index([nextDate])
+  @@map("sips")
+}
+
+model VaultItem {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  title       String
+  category    String
+  value       String   // Encrypted
+  type        String   // "text" or "document"
+  documentUrl String?  @map("document_url")
+  documentName String?  @map("document_name")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("vault_items")
+}
+
+model AutomationRule {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  name        String
+  description String
+  enabled     Boolean  @default(true)
+  ruleConfig  String   @map("rule_config") // JSON string
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("automation_rules")
+}
+
+model Settings {
+  id         String   @id @default(uuid())
+  userId     String   @unique @map("user_id")
+  preferences String  @default("{}") // JSON string
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("settings")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+

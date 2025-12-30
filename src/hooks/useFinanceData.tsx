@@ -136,92 +136,27 @@ export const categoryIcons: Record<string, React.ElementType> = {
 };
 
 // ============ Initial Data ============
-const initialTransactions: Transaction[] = [
-  { id: "1", type: "expense", category: "Shopping", description: "Amazon - Electronics", amount: 12499, date: "Today", account: "HDFC Credit Card", icon: ShoppingBag },
-  { id: "2", type: "expense", category: "Food", description: "Swiggy", amount: 856, date: "Today", account: "ICICI Debit", icon: Utensils },
-  { id: "3", type: "income", category: "Salary", description: "Monthly Salary", amount: 125000, date: "Yesterday", isRecurring: true, account: "HDFC Savings", icon: Receipt },
-  { id: "4", type: "expense", category: "Housing", description: "Rent Payment", amount: 25000, date: "Dec 20", isRecurring: true, account: "HDFC Savings", icon: Home },
-  { id: "5", type: "expense", category: "Transport", description: "Uber Rides", amount: 1240, date: "Dec 19", account: "ICICI Debit", icon: Car },
-  { id: "6", type: "expense", category: "Entertainment", description: "Netflix Subscription", amount: 649, date: "Dec 18", isRecurring: true, account: "HDFC Credit Card", icon: Gamepad2 },
-  { id: "7", type: "expense", category: "Food", description: "Grocery - BigBasket", amount: 3420, date: "Dec 17", account: "HDFC Debit", icon: Utensils },
-  { id: "8", type: "income", category: "Freelance", description: "Design Project", amount: 35000, date: "Dec 15", account: "HDFC Savings", icon: Receipt },
-];
+const initialTransactions: Transaction[] = [];
 
-const initialBudgetCategories: BudgetCategory[] = [
-  { id: "1", name: "Housing", icon: Home, budget: 30000, spent: 25000, color: "bg-primary" },
-  { id: "2", name: "Food & Dining", icon: Utensils, budget: 15000, spent: 12450, color: "bg-accent" },
-  { id: "3", name: "Shopping", icon: ShoppingBag, budget: 10000, spent: 12499, color: "bg-destructive" },
-  { id: "4", name: "Transport", icon: Car, budget: 5000, spent: 3240, color: "bg-success" },
-  { id: "5", name: "Entertainment", icon: Gamepad2, budget: 5000, spent: 2649, color: "bg-warning" },
-  { id: "6", name: "Utilities", icon: Wifi, budget: 5000, spent: 4200, color: "bg-primary" },
-  { id: "7", name: "Health", icon: Heart, budget: 3000, spent: 1500, color: "bg-success" },
-  { id: "8", name: "Education", icon: GraduationCap, budget: 5000, spent: 3000, color: "bg-accent" },
-];
+const initialBudgetCategories: BudgetCategory[] = [];
 
-const initialCommitments: UpcomingCommitment[] = [
-  { id: "1", name: "Rent", amount: 25000, dueDate: "Dec 28", type: "bill" },
-  { id: "2", name: "Electricity Bill", amount: 2500, dueDate: "Dec 29", type: "bill" },
-  { id: "3", name: "Netflix", amount: 649, dueDate: "Jan 1", type: "subscription" },
-  { id: "4", name: "Car Loan EMI", amount: 15000, dueDate: "Jan 5", type: "loan" },
-  { id: "5", name: "Spotify", amount: 119, dueDate: "Jan 7", type: "subscription" },
-];
+const initialCommitments: UpcomingCommitment[] = [];
 
-const initialBankAccounts: BankAccount[] = [
-  { id: "1", name: "Primary Savings", bank: "HDFC Bank", type: "savings", balance: 245890, accountNumber: "XXXX4521", color: "from-blue-500 to-blue-600" },
-  { id: "2", name: "Salary Account", bank: "ICICI Bank", type: "savings", balance: 78560, accountNumber: "XXXX8934", color: "from-orange-500 to-orange-600" },
-  { id: "3", name: "Fixed Deposit", bank: "SBI", type: "fd", balance: 500000, accountNumber: "XXXX2156", color: "from-green-500 to-green-600" },
-];
+const initialBankAccounts: BankAccount[] = [];
 
-const initialCreditCards: CreditCardType[] = [
-  { id: "1", name: "Regalia", bank: "HDFC", lastFour: "4521", limit: 300000, used: 78500, dueDate: "Jan 5", minDue: 7850, color: "from-purple-500 to-purple-600" },
-  { id: "2", name: "Amazon Pay", bank: "ICICI", lastFour: "8934", limit: 150000, used: 23400, dueDate: "Jan 10", minDue: 2340, color: "from-yellow-500 to-orange-500" },
-];
+const initialCreditCards: CreditCardType[] = [];
 
-const initialDebitCards: DebitCardType[] = [
-  { id: "1", name: "Platinum Debit", bank: "HDFC", lastFour: "4521", linkedAccount: "Primary Savings", cardNetwork: "Visa", expiryDate: "12/27", isActive: true, color: "from-blue-500 to-blue-600" },
-  { id: "2", name: "RuPay Debit", bank: "ICICI", lastFour: "8934", linkedAccount: "Salary Account", cardNetwork: "RuPay", expiryDate: "08/26", isActive: true, color: "from-orange-500 to-orange-600" },
-  { id: "3", name: "Classic Debit", bank: "SBI", lastFour: "2156", linkedAccount: "Fixed Deposit", cardNetwork: "Mastercard", expiryDate: "03/25", isActive: false, color: "from-green-500 to-green-600" },
-];
+const initialDebitCards: DebitCardType[] = [];
 
-const initialVaultItems: VaultItem[] = [
-  { id: "1", title: "PAN Card", category: "Identity", value: "ABCDE1234F", type: "text", lastUpdated: "Dec 15, 2024" },
-  { id: "2", title: "Aadhaar Card", category: "Identity", value: "XXXX XXXX 1234", type: "text", lastUpdated: "Dec 15, 2024" },
-  { id: "3", title: "Passport", category: "Travel", value: "A1234567", type: "text", lastUpdated: "Nov 20, 2024" },
-  { id: "4", title: "Insurance Policy", category: "Documents", value: "POL-12345678", type: "document", documentName: "insurance_policy.pdf", lastUpdated: "Oct 5, 2024" },
-];
+const initialVaultItems: VaultItem[] = [];
 
-const initialInvestments: Investment[] = [
-  { id: "1", name: "Axis Bluechip Fund", type: "mutual_fund", invested: 200000, current: 245000, returns: 22.5, color: "hsl(270, 60%, 55%)" },
-  { id: "2", name: "HDFC Mid-Cap Fund", type: "mutual_fund", invested: 150000, current: 172500, returns: 15, color: "hsl(280, 70%, 60%)" },
-  { id: "3", name: "Reliance Industries", type: "stock", invested: 100000, current: 118000, returns: 18, color: "hsl(160, 60%, 45%)" },
-  { id: "4", name: "TCS", type: "stock", invested: 75000, current: 82500, returns: 10, color: "hsl(35, 90%, 55%)" },
-  { id: "5", name: "PPF Account", type: "ppf", invested: 500000, current: 580000, returns: 7.1, color: "hsl(200, 70%, 50%)" },
-  { id: "6", name: "NPS Tier 1", type: "nps", invested: 300000, current: 345000, returns: 15, color: "hsl(270, 40%, 70%)" },
-];
+const initialInvestments: Investment[] = [];
 
-const initialSIPs: SIP[] = [
-  { id: "1", name: "Axis Bluechip Fund", amount: 10000, frequency: "Monthly", nextDate: "Jan 5", totalInvested: 120000 },
-  { id: "2", name: "HDFC Mid-Cap Fund", amount: 5000, frequency: "Monthly", nextDate: "Jan 10", totalInvested: 60000 },
-  { id: "3", name: "PPF Contribution", amount: 12500, frequency: "Monthly", nextDate: "Jan 1", totalInvested: 150000 },
-];
+const initialSIPs: SIP[] = [];
 
-const initialCategories: Category[] = [
-  { id: "1", name: "Salary", type: "income", count: 12, color: "bg-success" },
-  { id: "2", name: "Freelance", type: "income", count: 8, color: "bg-accent" },
-  { id: "3", name: "Housing", type: "expense", count: 12, color: "bg-primary" },
-  { id: "4", name: "Food & Dining", type: "expense", count: 45, color: "bg-warning" },
-  { id: "5", name: "Shopping", type: "expense", count: 23, color: "bg-destructive" },
-  { id: "6", name: "Transport", type: "expense", count: 34, color: "bg-muted-foreground" },
-  { id: "7", name: "Entertainment", type: "expense", count: 18, color: "bg-accent" },
-  { id: "8", name: "Utilities", type: "expense", count: 12, color: "bg-primary" },
-];
+const initialCategories: Category[] = [];
 
-const initialAutomationRules: AutomationRule[] = [
-  { id: "1", name: "Auto-categorize Amazon", description: "Categorize Amazon transactions as Shopping", enabled: true },
-  { id: "2", name: "Salary Detection", description: "Auto-tag monthly salary credits", enabled: true },
-  { id: "3", name: "Recurring Bill Alert", description: "Notify 3 days before due date", enabled: true },
-  { id: "4", name: "Budget Warning", description: "Alert when 80% budget consumed", enabled: false },
-];
+const initialAutomationRules: AutomationRule[] = [];
 
 // ============ Hook ============
 export function useFinanceData() {

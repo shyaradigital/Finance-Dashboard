@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Investment } from "@/hooks/useFinanceData";
 import { toast } from "sonner";
+import { useSettingsOptions } from "@/hooks/useSettingsOptions";
 
 interface InvestmentModalProps {
   isOpen: boolean;
@@ -27,14 +28,6 @@ interface InvestmentModalProps {
   onDelete?: (id: string) => void;
   investment?: Investment | null;
 }
-
-const typeOptions = [
-  { value: "mutual_fund", label: "Mutual Fund" },
-  { value: "stock", label: "Stock" },
-  { value: "sip", label: "SIP" },
-  { value: "ppf", label: "PPF" },
-  { value: "nps", label: "NPS" },
-];
 
 const colorOptions = [
   "hsl(270, 60%, 55%)",
@@ -52,8 +45,22 @@ export default function InvestmentModal({
   onDelete,
   investment,
 }: InvestmentModalProps) {
+  const { options } = useSettingsOptions();
+  
+  // Create type options from user preferences or allow free-form
+  const typeOptions = useMemo(() => {
+    if (options.investmentTypes.length > 0) {
+      return options.investmentTypes.map(type => ({
+        value: type.toLowerCase().replace(/\s+/g, '_'),
+        label: type,
+      }));
+    }
+    return [];
+  }, [options.investmentTypes]);
+
   const [name, setName] = useState("");
-  const [type, setType] = useState<Investment["type"]>("mutual_fund");
+  const [type, setType] = useState<string>("");
+  const [customType, setCustomType] = useState("");
   const [invested, setInvested] = useState("");
   const [current, setCurrent] = useState("");
 
@@ -65,9 +72,11 @@ export default function InvestmentModal({
       setType(investment.type);
       setInvested(investment.invested.toString());
       setCurrent(investment.current.toString());
+      setCustomType("");
     } else {
       setName("");
-      setType("mutual_fund");
+      setType("");
+      setCustomType("");
       setInvested("");
       setCurrent("");
     }
@@ -79,13 +88,22 @@ export default function InvestmentModal({
       return;
     }
 
+    // Use custom type if provided, otherwise use selected type
+    const finalType = customType.trim() || type;
+    if (!finalType) {
+      toast.error("Please select or enter an investment type");
+      return;
+    }
+
     const investedAmount = parseFloat(invested);
     const currentAmount = parseFloat(current) || investedAmount;
-    const returns = ((currentAmount - investedAmount) / investedAmount) * 100;
+    const returns = investedAmount > 0 
+      ? ((currentAmount - investedAmount) / investedAmount) * 100 
+      : 0;
 
     const investmentData = {
       name,
-      type,
+      type: finalType as Investment["type"],
       invested: investedAmount,
       current: currentAmount,
       returns: Math.round(returns * 10) / 10,
@@ -134,18 +152,40 @@ export default function InvestmentModal({
           {/* Type */}
           <div className="space-y-2">
             <Label>Investment Type</Label>
-            <Select value={type} onValueChange={(v) => setType(v as Investment["type"])}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                {typeOptions.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {typeOptions.length > 0 ? (
+              <Select value={type} onValueChange={(v) => {
+                setType(v);
+                setCustomType("");
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {typeOptions.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__custom__">+ Add Custom Type</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                placeholder="e.g., Mutual Fund, Stock, PPF"
+                value={customType || type}
+                onChange={(e) => {
+                  setCustomType(e.target.value);
+                  setType(e.target.value);
+                }}
+              />
+            )}
+            {type === "__custom__" && (
+              <Input
+                placeholder="Enter investment type"
+                value={customType}
+                onChange={(e) => setCustomType(e.target.value)}
+              />
+            )}
           </div>
 
           {/* Amount Invested */}

@@ -94,7 +94,9 @@ function BudgetCard({
 export default function Budget() {
   const { 
     budgetCategories, 
-    commitments, 
+    commitments,
+    bankAccounts,
+    investments,
     addBudgetCategory, 
     updateBudgetCategory, 
     deleteBudgetCategory,
@@ -111,8 +113,16 @@ export default function Budget() {
   
   const totalBudget = budgetCategories.reduce((sum, c) => sum + c.budget, 0);
   const totalSpent = budgetCategories.reduce((sum, c) => sum + c.spent, 0);
-  const overallPercentage = (totalSpent / totalBudget) * 100;
+  const overallPercentage = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
   const totalCommitments = commitments.reduce((sum, c) => sum + c.amount, 0);
+  
+  // Calculate balance forecast
+  const totalAccountBalance = bankAccounts.reduce((sum, account) => sum + account.balance, 0);
+  const totalInvestmentValue = investments.reduce((sum, inv) => sum + inv.current, 0);
+  const currentBalance = totalAccountBalance + totalInvestmentValue;
+  const afterCommitments = currentBalance - totalCommitments;
+  const nextSalary = 0; // This would come from recurring income transactions in the future
+  const afterNextSalary = afterCommitments + nextSalary;
 
   const handleEditBudget = (budget: BudgetCategory) => {
     setSelectedBudget(budget);
@@ -275,7 +285,7 @@ export default function Budget() {
                   <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                     <div>
                       <p className="text-sm text-muted-foreground">Current Balance</p>
-                      <p className="text-2xl font-bold text-foreground">₹3,45,890</p>
+                      <p className="text-2xl font-bold text-foreground">₹{currentBalance.toLocaleString('en-IN')}</p>
                     </div>
                     <TrendingUp className="h-8 w-8 text-success" />
                   </div>
@@ -283,7 +293,7 @@ export default function Budget() {
                   <div className="flex items-center justify-between p-4 rounded-xl bg-warning/5 border border-warning/20">
                     <div>
                       <p className="text-sm text-muted-foreground">After Commitments</p>
-                      <p className="text-2xl font-bold text-foreground">₹3,02,622</p>
+                      <p className="text-2xl font-bold text-foreground">₹{afterCommitments.toLocaleString('en-IN')}</p>
                     </div>
                     <TrendingDown className="h-8 w-8 text-warning" />
                   </div>
@@ -291,7 +301,7 @@ export default function Budget() {
                   <div className="flex items-center justify-between p-4 rounded-xl bg-success/5 border border-success/20">
                     <div>
                       <p className="text-sm text-muted-foreground">After Next Salary</p>
-                      <p className="text-2xl font-bold text-foreground">₹4,27,622</p>
+                      <p className="text-2xl font-bold text-foreground">₹{afterNextSalary.toLocaleString('en-IN')}</p>
                     </div>
                     <TrendingUp className="h-8 w-8 text-success" />
                   </div>

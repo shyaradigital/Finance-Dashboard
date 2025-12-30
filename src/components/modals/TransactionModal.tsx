@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { X, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,8 @@ import {
 import { cn } from "@/lib/utils";
 import { Transaction, categoryIcons } from "@/hooks/useFinanceData";
 import { toast } from "sonner";
+import { useAccounts, useCreditCards } from "@/hooks/useFinanceQueries";
+import { useCategories } from "@/hooks/useFinanceQueries";
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -31,10 +33,6 @@ interface TransactionModalProps {
   defaultType?: "income" | "expense";
 }
 
-const expenseCategories = ["Shopping", "Food", "Housing", "Transport", "Entertainment", "Utilities", "Health", "Education"];
-const incomeCategories = ["Salary", "Freelance", "Investment", "Business", "Other"];
-const accounts = ["HDFC Savings", "HDFC Credit Card", "ICICI Debit", "ICICI Credit", "SBI Savings"];
-
 export default function TransactionModal({
   isOpen,
   onClose,
@@ -44,6 +42,10 @@ export default function TransactionModal({
   transaction,
   defaultType = "expense",
 }: TransactionModalProps) {
+  const { bankAccounts } = useAccounts();
+  const { creditCards } = useCreditCards();
+  const { categories: allCategories } = useCategories();
+
   const [type, setType] = useState<"income" | "expense">(defaultType);
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -53,7 +55,24 @@ export default function TransactionModal({
   const [isRecurring, setIsRecurring] = useState(false);
 
   const isEditing = !!transaction;
-  const categories = type === "income" ? incomeCategories : expenseCategories;
+
+  // Filter categories by type
+  const categories = useMemo(() => {
+    return allCategories.filter(cat => cat.type === type);
+  }, [allCategories, type]);
+
+  // Combine accounts and credit cards for dropdown
+  const accountOptions = useMemo(() => {
+    const accountList = bankAccounts.map(acc => ({
+      value: `${acc.bank} ${acc.name}`,
+      label: `${acc.bank} ${acc.name}`,
+    }));
+    const cardList = creditCards.map(card => ({
+      value: `${card.bank} ${card.name} (Credit Card)`,
+      label: `${card.bank} ${card.name} (Credit Card)`,
+    }));
+    return [...accountList, ...cardList];
+  }, [bankAccounts, creditCards]);
 
   useEffect(() => {
     if (transaction) {
@@ -185,35 +204,47 @@ export default function TransactionModal({
           {/* Category */}
           <div className="space-y-2">
             <Label>Category</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {categories.length > 0 ? (
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.name}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="text-sm text-muted-foreground p-2 border rounded-md">
+                No {type} categories found. Please create a category first.
+              </div>
+            )}
           </div>
 
           {/* Account */}
           <div className="space-y-2">
             <Label>Account</Label>
-            <Select value={account} onValueChange={setAccount}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select account" />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts.map((acc) => (
-                  <SelectItem key={acc} value={acc}>
-                    {acc}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {accountOptions.length > 0 ? (
+              <Select value={account} onValueChange={setAccount}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accountOptions.map((acc) => (
+                    <SelectItem key={acc.value} value={acc.value}>
+                      {acc.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="text-sm text-muted-foreground p-2 border rounded-md">
+                No accounts found. Please create an account or credit card first.
+              </div>
+            )}
           </div>
 
           {/* Date */}
