@@ -5,7 +5,7 @@
  * Usage: node scripts/generate-secrets.js
  */
 
-const crypto = require('crypto');
+import crypto from 'crypto';
 
 function generateSecret(length = 64) {
   return crypto.randomBytes(length).toString('base64');
