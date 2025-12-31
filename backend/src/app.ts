@@ -33,18 +33,26 @@ app.get("/health", (req, res) => {
 });
 
 // API routes
-app.use("/api/auth", authRoutes);
-app.use("/api/categories", categoriesRoutes);
-app.use("/api/accounts", accountsRoutes);
-app.use("/api/cards", cardsRoutes);
-app.use("/api/transactions", transactionsRoutes);
-app.use("/api/budgets", budgetsRoutes);
-app.use("/api/commitments", commitmentsRoutes);
-app.use("/api/investments", investmentsRoutes);
-app.use("/api/vault", vaultRoutes);
-app.use("/api/analytics", analyticsRoutes);
-app.use("/api/settings", settingsRoutes);
-app.use("/api/automation", automationRoutes);
+console.log("📋 Registering API routes...");
+try {
+  app.use("/api/auth", authRoutes);
+  console.log("  ✓ /api/auth routes registered");
+  app.use("/api/categories", categoriesRoutes);
+  app.use("/api/accounts", accountsRoutes);
+  app.use("/api/cards", cardsRoutes);
+  app.use("/api/transactions", transactionsRoutes);
+  app.use("/api/budgets", budgetsRoutes);
+  app.use("/api/commitments", commitmentsRoutes);
+  app.use("/api/investments", investmentsRoutes);
+  app.use("/api/vault", vaultRoutes);
+  app.use("/api/analytics", analyticsRoutes);
+  app.use("/api/settings", settingsRoutes);
+  app.use("/api/automation", automationRoutes);
+  console.log("✅ All API routes registered successfully");
+} catch (error) {
+  console.error("❌ Error registering routes:", error);
+  throw error;
+}
 
 // 404 handler
 app.use((req, res) => {
