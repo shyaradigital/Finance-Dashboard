@@ -9,8 +9,21 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(32),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.string().regex(/^\d+$/).transform(Number).default("3000"),
-  FRONTEND_URL: z.string().url().default("http://localhost:5173"),
+  FRONTEND_URL: z.string().default("http://localhost:5173").transform((val): string[] => {
+    // Support comma-separated URLs or single URL
+    const urls = val.split(",").map(url => url.trim());
+    // Validate each URL
+    urls.forEach(url => {
+      try {
+        new URL(url);
+      } catch {
+        throw new Error(`Invalid URL in FRONTEND_URL: ${url}`);
+      }
+    });
+    return urls;
+  }),
   ENCRYPTION_KEY: z.string().min(32).optional(),
+  API_SECRET: z.string().min(32).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

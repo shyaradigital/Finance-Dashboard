@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { authController } from "./auth.controller";
-import { authenticate } from "../middleware/auth";
+import { authenticate, validateApiSecret } from "../middleware/auth";
 import { validate } from "../middleware/validator";
-import { authRateLimiter } from "../middleware/rateLimiter";
+import { authRateLimiter, writeRateLimiter, deleteRateLimiter, readRateLimiter } from "../middleware/rateLimiter";
 import {
   signupSchema,
   loginSchema,
@@ -30,18 +30,31 @@ router.post(
 
 router.post(
   "/refresh",
+  authRateLimiter, // Add rate limiting to prevent abuse
   validate(refreshTokenSchema),
   authController.refresh.bind(authController)
 );
 
-router.post("/logout", authController.logout.bind(authController));
+router.post(
+  "/logout",
+  authenticate, // Require authentication for logout
+  writeRateLimiter, // Add rate limiting to prevent abuse
+  authController.logout.bind(authController)
+);
 
 // Protected routes
-router.get("/me", authenticate, authController.getMe.bind(authController));
+router.get(
+  "/me",
+  authenticate,
+  readRateLimiter,
+  authController.getMe.bind(authController)
+);
 
 router.put(
   "/profile",
   authenticate,
+  writeRateLimiter,
+  validateApiSecret,
   validate(updateProfileSchema),
   authController.updateProfile.bind(authController)
 );
@@ -49,6 +62,8 @@ router.put(
 router.put(
   "/password",
   authenticate,
+  writeRateLimiter,
+  validateApiSecret,
   validate(changePasswordSchema),
   authController.changePassword.bind(authController)
 );
@@ -56,6 +71,8 @@ router.put(
 router.delete(
   "/account",
   authenticate,
+  deleteRateLimiter,
+  validateApiSecret,
   authController.deleteAccount.bind(authController)
 );
 

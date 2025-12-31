@@ -1,8 +1,7 @@
 import express from "express";
-import cors from "cors";
 import env from "./config/env";
 import { errorHandler } from "./middleware/errorHandler";
-import { generalRateLimiter } from "./middleware/rateLimiter";
+import { corsMiddleware } from "./middleware/cors";
 import authRoutes from "./auth/auth.routes";
 import categoriesRoutes from "./categories/categories.routes";
 import accountsRoutes from "./accounts/accounts.routes";
@@ -19,13 +18,10 @@ import automationRoutes from "./automation/automation.routes";
 const app = express();
 
 // Middleware
-app.use(cors({
-  origin: env.FRONTEND_URL,
-  credentials: true,
-}));
+// Use custom CORS middleware with strict origin validation
+app.use(corsMiddleware);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(generalRateLimiter);
 
 // Health check
 app.get("/health", (req, res) => {

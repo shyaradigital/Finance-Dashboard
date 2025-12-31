@@ -7,7 +7,10 @@ const PORT = env.PORT || 3000;
 const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📝 Environment: ${env.NODE_ENV}`);
-  console.log(`🌐 Frontend URL: ${env.FRONTEND_URL}`);
+  console.log(`🌐 Frontend URLs: ${env.FRONTEND_URL.join(", ")}`);
+  if (env.API_SECRET) {
+    console.log(`🔐 API Secret: Configured`);
+  }
   console.log(`✅ Routes registered successfully`);
 });
 

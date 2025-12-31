@@ -150,6 +150,12 @@ export class AuthService {
     });
   }
 
+  async logoutAll(userId: string) {
+    await prisma.refreshToken.deleteMany({
+      where: { userId },
+    });
+  }
+
   async getCurrentUser(userId: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },

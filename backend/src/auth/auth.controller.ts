@@ -34,8 +34,14 @@ export class AuthController {
 
   async logout(req: AuthRequest, res: Response) {
     try {
+      // If refreshToken is provided in body, delete that specific token
+      // Otherwise, delete all refresh tokens for the authenticated user
       const { refreshToken } = req.body;
-      await authService.logout(refreshToken);
+      if (refreshToken) {
+        await authService.logout(refreshToken);
+      } else {
+        await authService.logoutAll(req.userId!);
+      }
       sendSuccess(res, null, "Logged out successfully");
     } catch (error: any) {
       sendError(res, error.message, 400);
