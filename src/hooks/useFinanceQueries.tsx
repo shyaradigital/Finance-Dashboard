@@ -123,6 +123,7 @@ function transformCreditCard(backendCard: any): CreditCardType {
     limit: Number(backendCard.limit),
     used: used,
     dueDate: dueDateFormatted, // Format as "Jan 15" for display
+    dueDateDay: dueDateNum, // Store numeric day for calculations
     minDue: Number(backendCard.minDue || backendCard.limit * 0.05),
     color: backendCard.color || "from-purple-500 to-purple-600",
   };

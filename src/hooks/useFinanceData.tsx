@@ -58,7 +58,8 @@ export interface CreditCardType {
   lastFour: string;
   limit: number;
   used: number;
-  dueDate: string;
+  dueDate: string; // Formatted display string (e.g., "Jan 15")
+  dueDateDay?: number; // Numeric day of month (1-31) for calculations
   minDue: number;
   color: string;
 }

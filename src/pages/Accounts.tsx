@@ -264,38 +264,35 @@ export default function Accounts() {
 
     // Find the nearest due date
     creditCards.forEach((card) => {
-      // dueDate is formatted as "MMM d" (e.g., "Jan 15"), parse it to get the day
-      try {
-        const parsedDate = new Date(card.dueDate + " " + now.getFullYear());
-        if (!isNaN(parsedDate.getTime())) {
-          const dueDay = parsedDate.getDate();
-          let daysUntil = dueDay - currentDay;
-          
-          // If due date has passed this month, check next month
-          if (daysUntil < 0) {
-            const daysInCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-            daysUntil = daysInCurrentMonth - currentDay + dueDay;
+      // Use dueDateDay if available, otherwise parse from formatted string
+      const dueDay = card.dueDateDay || (() => {
+        try {
+          // Try to parse from formatted string "MMM d"
+          const parsedDate = new Date(card.dueDate + " " + now.getFullYear());
+          if (!isNaN(parsedDate.getTime())) {
+            return parsedDate.getDate();
           }
-
-          if (daysUntil < daysUntilDue) {
-            daysUntilDue = daysUntil;
+        } catch (e) {
+          // If parsing fails, try to extract day number from string
+          const dayMatch = card.dueDate.match(/\d+/);
+          if (dayMatch) {
+            return parseInt(dayMatch[0]);
           }
         }
-      } catch (e) {
-        // If parsing fails, try to extract day number from string
-        const dayMatch = card.dueDate.match(/\d+/);
-        if (dayMatch) {
-          const dueDay = parseInt(dayMatch[0]);
-          let daysUntil = dueDay - currentDay;
-          
-          if (daysUntil < 0) {
-            const daysInCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-            daysUntil = daysInCurrentMonth - currentDay + dueDay;
-          }
+        return null;
+      })();
 
-          if (daysUntil < daysUntilDue) {
-            daysUntilDue = daysUntil;
-          }
+      if (dueDay !== null && !isNaN(dueDay)) {
+        let daysUntil = dueDay - currentDay;
+        
+        // If due date has passed this month, check next month
+        if (daysUntil < 0) {
+          const daysInCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+          daysUntil = daysInCurrentMonth - currentDay + dueDay;
+        }
+
+        if (daysUntil < daysUntilDue) {
+          daysUntilDue = daysUntil;
         }
       }
     });
