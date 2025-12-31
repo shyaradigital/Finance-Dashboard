@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Helmet } from "react-helmet";
 import { 
   Building2, 
@@ -8,6 +8,7 @@ import {
   EyeOff,
   Plus,
   TrendingUp,
+  TrendingDown,
   AlertCircle,
   ChevronRight,
   Wallet,
@@ -24,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { useFinance } from "@/contexts/FinanceContext";
 import { AccountModal, CreditCardModal, DebitCardModal, VaultModal } from "@/components/modals";
 import { BankAccount, CreditCardType, DebitCardType, VaultItem } from "@/hooks/useFinanceData";
+import { useTransactions } from "@/hooks/useFinanceQueries";
 
 function BankAccountCard({ 
   account, 
@@ -209,6 +211,8 @@ export default function Accounts() {
     deleteVaultItem
   } = useFinance();
   
+  const { data: transactions = [] } = useTransactions();
+  
   const [activeTab, setActiveTab] = useState("banks");
   const [showVaultItems, setShowVaultItems] = useState(false);
   
@@ -225,6 +229,28 @@ export default function Accounts() {
   const totalBalance = bankAccounts.reduce((sum, acc) => sum + acc.balance, 0);
   const totalCredit = creditCards.reduce((sum, card) => sum + card.used, 0);
   const activeDebitCards = debitCards.filter(c => c.isActive).length;
+
+  // Calculate monthly change from transactions
+  const monthlyChange = useMemo(() => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+    const currentMonthTransactions = transactions.filter((tx) => {
+      const txDate = new Date(tx.date);
+      return txDate >= startOfMonth && txDate <= endOfMonth;
+    });
+
+    const income = currentMonthTransactions
+      .filter((tx) => tx.type === "income")
+      .reduce((sum, tx) => sum + tx.amount, 0);
+
+    const expenses = currentMonthTransactions
+      .filter((tx) => tx.type === "expense")
+      .reduce((sum, tx) => sum + tx.amount, 0);
+
+    return income - expenses;
+  }, [transactions]);
 
   const handleEditAccount = (account: BankAccount) => {
     setSelectedAccount(account);
@@ -282,10 +308,19 @@ export default function Accounts() {
                 <div>
                   <p className="text-sm text-muted-foreground">Total Bank Balance</p>
                   <p className="text-2xl font-bold text-foreground mt-1">₹{totalBalance.toLocaleString('en-IN')}</p>
-                  <p className="text-xs text-success mt-1 flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3" />
-                    +₹45,230 this month
-                  </p>
+                  {monthlyChange !== 0 && (
+                    <p className={cn(
+                      "text-xs mt-1 flex items-center gap-1",
+                      monthlyChange > 0 ? "text-success" : "text-destructive"
+                    )}>
+                      {monthlyChange > 0 ? (
+                        <TrendingUp className="h-3 w-3" />
+                      ) : (
+                        <TrendingDown className="h-3 w-3" />
+                      )}
+                      {monthlyChange > 0 ? "+" : ""}₹{Math.abs(monthlyChange).toLocaleString('en-IN')} this month
+                    </p>
+                  )}
                 </div>
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
                   <Building2 className="h-6 w-6 text-primary" />
