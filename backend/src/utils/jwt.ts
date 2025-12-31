@@ -1,16 +1,18 @@
-import jwt from "jsonwebtoken";
+import jwt, { SignOptions } from "jsonwebtoken";
 import { jwtConfig, TokenPayload } from "../config/jwt";
 
 export function generateAccessToken(payload: TokenPayload): string {
-  return jwt.sign(payload, jwtConfig.accessTokenSecret, {
-    expiresIn: jwtConfig.accessTokenExpiry as string | number,
-  });
+  const options: SignOptions = {
+    expiresIn: jwtConfig.accessTokenExpiry,
+  };
+  return jwt.sign(payload as object, jwtConfig.accessTokenSecret, options);
 }
 
 export function generateRefreshToken(payload: TokenPayload): string {
-  return jwt.sign(payload, jwtConfig.refreshTokenSecret, {
-    expiresIn: jwtConfig.refreshTokenExpiry as string | number,
-  });
+  const options: SignOptions = {
+    expiresIn: jwtConfig.refreshTokenExpiry,
+  };
+  return jwt.sign(payload as object, jwtConfig.refreshTokenSecret, options);
 }
 
 export function verifyAccessToken(token: string): TokenPayload {
