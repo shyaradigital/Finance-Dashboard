@@ -252,6 +252,69 @@ export default function Accounts() {
     return income - expenses;
   }, [transactions]);
 
+  // Calculate payment due status from credit cards
+  const paymentDueStatus = useMemo(() => {
+    if (creditCards.length === 0 || totalCredit === 0) {
+      return null;
+    }
+
+    const now = new Date();
+    const currentDay = now.getDate();
+    let daysUntilDue = Infinity;
+
+    // Find the nearest due date
+    creditCards.forEach((card) => {
+      // dueDate is formatted as "MMM d" (e.g., "Jan 15"), parse it to get the day
+      try {
+        const parsedDate = new Date(card.dueDate + " " + now.getFullYear());
+        if (!isNaN(parsedDate.getTime())) {
+          const dueDay = parsedDate.getDate();
+          let daysUntil = dueDay - currentDay;
+          
+          // If due date has passed this month, check next month
+          if (daysUntil < 0) {
+            const daysInCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+            daysUntil = daysInCurrentMonth - currentDay + dueDay;
+          }
+
+          if (daysUntil < daysUntilDue) {
+            daysUntilDue = daysUntil;
+          }
+        }
+      } catch (e) {
+        // If parsing fails, try to extract day number from string
+        const dayMatch = card.dueDate.match(/\d+/);
+        if (dayMatch) {
+          const dueDay = parseInt(dayMatch[0]);
+          let daysUntil = dueDay - currentDay;
+          
+          if (daysUntil < 0) {
+            const daysInCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+            daysUntil = daysInCurrentMonth - currentDay + dueDay;
+          }
+
+          if (daysUntil < daysUntilDue) {
+            daysUntilDue = daysUntil;
+          }
+        }
+      }
+    });
+
+    if (daysUntilDue === Infinity) {
+      return null;
+    }
+
+    if (daysUntilDue <= 7) {
+      return daysUntilDue === 0 
+        ? "Payment due today" 
+        : daysUntilDue === 1 
+        ? "Payment due tomorrow"
+        : `Payment due in ${daysUntilDue} days`;
+    }
+
+    return null; // Don't show message if more than 7 days away
+  }, [creditCards, totalCredit]);
+
   const handleEditAccount = (account: BankAccount) => {
     setSelectedAccount(account);
     setIsAccountModalOpen(true);
@@ -335,7 +398,12 @@ export default function Accounts() {
                 <div>
                   <p className="text-sm text-muted-foreground">Credit Card Outstanding</p>
                   <p className="text-2xl font-bold text-foreground mt-1">₹{totalCredit.toLocaleString('en-IN')}</p>
-                  <p className="text-xs text-warning mt-1">Payment due soon</p>
+                  {paymentDueStatus && (
+                    <p className="text-xs text-warning mt-1">{paymentDueStatus}</p>
+                  )}
+                  {!paymentDueStatus && totalCredit > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">No payments due soon</p>
+                  )}
                 </div>
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10">
                   <CreditCard className="h-6 w-6 text-destructive" />

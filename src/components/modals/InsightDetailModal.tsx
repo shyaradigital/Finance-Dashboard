@@ -84,38 +84,18 @@ export default function InsightDetailModal({
           {insight.type === "success" && (
             <div className="p-4 rounded-lg bg-success/5 border border-success/20">
               <h4 className="font-medium text-foreground mb-2">Great Progress!</h4>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Target</span>
-                <span className="font-medium text-foreground">₹50,000</span>
-              </div>
-              <div className="flex items-center justify-between text-sm mt-1">
-                <span className="text-muted-foreground">Current</span>
-                <span className="font-medium text-success">₹58,000</span>
-              </div>
-              <div className="flex items-center gap-2 mt-2 text-success text-sm">
-                <TrendingUp className="h-4 w-4" />
-                <span>₹8,000 above target</span>
-              </div>
+              <p className="text-sm text-muted-foreground">
+                Keep up the excellent work! Continue monitoring your finances to maintain this positive trend.
+              </p>
             </div>
           )}
 
           {insight.type === "info" && (
             <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-              <h4 className="font-medium text-foreground mb-2">Quick Stats</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Active subscriptions</span>
-                  <span className="font-medium">5</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Monthly total</span>
-                  <span className="font-medium">₹2,500</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Last reviewed</span>
-                  <span className="font-medium">30 days ago</span>
-                </div>
-              </div>
+              <h4 className="font-medium text-foreground mb-2">Additional Information</h4>
+              <p className="text-sm text-muted-foreground">
+                Review your transactions and accounts regularly to stay on top of your finances.
+              </p>
             </div>
           )}
         </div>
